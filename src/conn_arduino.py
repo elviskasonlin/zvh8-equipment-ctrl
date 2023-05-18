@@ -1,38 +1,63 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed May 17 2023
 
-# ----------
-# Imports
-# ----------
+@author: elviskasonlin
+"""
 
-# Serial communication with Arduino
+import waiting
 import serial
-import io
-
-# Others
-from copy import deepcopy
-import json
-import threading
 import time
+def read_serial(serialObject):
+    print("DEBUG I'm in read_serial")
+    # print(serialObject)
+    incoming_data = str()
+    if serialObject.isOpen():
+        try:
+            serialObject.flush()
+            incoming_data = serialObject.readline().decode(encoding="ascii").strip()
+        except Exception as Error:
+            print(Error)
+    return incoming_data
 
-# ----------
-# Global Var
-# ----------
+def write_serial(write_data: str, serialObject):
+    print("DEBUG I'm in write_serial")
+    if serialObject.isOpen():
+        try:
+            serialObject.flush()
+            serialObject.write(write_data.encode(encoding="ascii"))
+        except Exception as error:
+            print(error)
 
-# Setting some global variables
-FSR_ARDUINO_PORT = "/dev/tty.usbmodem14101"  # The Arduino Serial device. COMxx on Windows, ttyUSBx on UNIX
-FSR_ARDUINO_BAUD = 9600  # Ensure this matches the rate on Arduino
-FSR_ARDUINO_TIMEOUT = 0  # In seconds. 0 is non-blocking mode
-ARDUINO_SERIAL_STATUS = int()  # Arduino Serial Status Flag
+def poll_arduino(serialObject):
+    initialisation_verify_data = "INIT:RXTX:SUC"
+    initialisation_write_data = "INIT:RXTX:CHK\n"
+    initialisation_read_data = str()
 
-RESOURCE_STRING_USB = "USB::0x0AAD::0x0119::022019943::INSTR"  # USB-TMC (Test and Measurement Class)
-VNA_VISA_PORT = str()
+    write_serial(initialisation_write_data, serialObject)
+    initialisation_read_data = read_serial(serialObject)
 
+    if (initialisation_read_data == initialisation_verify_data):
+        return True
+    else:
+        return False
 
-# -----------
-# Arduino FSR
-# -----------
+    serialObject.reset_input_buffer()
+    serialObject.reset_output_buffer()
 
-def get_FSR_vals(serialObject, data_selection: str):
+def handshake_connection(serialObject, timeout: float, pollingRate: float):
+    CONN_STATUS_FLAG = False
+
+    try:
+        CONN_STATUS_FLAG = waiting.wait(lambda:poll_arduino(serialObject), on_poll=lambda: print(f"Polling at the rate of {pollingRate}s. Waiting for Arduino until timeout of {timeout}s..."), timeout_seconds=timeout, sleep_seconds=1)
+    except TimeoutExpired:
+        print("Operation Timed Out! Unable to establish connection with Arduino")
+        return False
+
+    return CONN_STATUS_FLAG
+
+def get_FSR_vals(serialObject: serial.Serial, data_selection: str):
     print("DEBUG I'm in get_FSR_vals")
     read_data = str()
     write_data = str()
@@ -71,110 +96,35 @@ def get_FSR_vals(serialObject, data_selection: str):
 
     return read_data
 
+def current_time_ms():
+    return round(time.time() * 1000)
 
-def read_serial(serialObject):
-    print("DEBUG I'm in read_serial")
-    # print(serialObject)
-    incoming_data = str()
-    if serialObject.isOpen():
-        try:
-            serialObject.flush()
-            incoming_data = serialObject.readline().decode(encoding="ascii").strip()
-        except Exception as Error:
-            print(Error)
-    return incoming_data
-
-
-def write_serial(write_data: str, serialObject):
-    print("DEBUG I'm in write_serial")
-    if serialObject.isOpen():
-        try:
-            serialObject.flush()
-            serialObject.write(write_data.encode(encoding="ascii"))
-        except Exception as error:
-            print(error)
-
-
-def initialise_arduino_read_subroutine(serialObject):
-    print("DEBUG I'm in initialise_sub_read")
-    while (ARDUINO_SERIAL_STATUS == 0):
-        initialisation_read_data = read_serial(serialObject)
-
-        # print(initialisation_read_data)
-        # print(initialisation_read_data == "INIT:RXTX:SUC")
-
-        if (initialisation_read_data == "INIT:RXTX:SUC"):
-            ARDUINO_SERIAL_STATUS = 1
-        else:
-            ARDUINO_SERIAL_STATUS = 0
-
-
-def initialise_arduino_serial_comm(serialObject):
-    print("DEBUG I'm in initialise_arduino_serial_comm")
-
-    initialisation_write_data = "INIT:RXTX:CHK\n"
-    initialisation_read_data = str()
-
-    write_serial(initialisation_write_data, serialObject)
-
-    timer = threading.Timer(1.0, initialise_arduino_read_subroutine, args=(serialObject))
-    timer.start()
-
-
-# -------------------
-# VISA TnM Instrument
-# -------------------
-
-# ----------
-# Main
-# ----------
-
-def main():
-    # Initialise VNA
-    # VNAInstrument = RsInstrument(resource_name=RESOURCE_STRING_USB, id_query=True, reset=True, SelectVisa="rs")
-
-    # ======================
-    # Initialise Serial Comm
-    # ----------------------
-    # Notes
-    # * Hardware Handshaking Enabled with rtscts flag
-    # * Arduino will reset itself when serial comm is initiated
-    # * This is non-blocking. Therefore, you will need to do another handshake
-    #   with "INIT:RXTX:CHK\n" which, if the Arduino is active will return
-    #   "INIT:RXTX:SUC\n"
+def establish_connection(configVariables: dict):
+    serial_parity = None
+    match configVariables["ARDUINO_CONN_PARITY"]:
+        case "E":
+            serial_parity = serial.PARITY_EVEN
+        case "O":
+            serial_parity = serial.PARITY_ODD
+        case _:
+            serial_parity = serial.PARITY_NONE
 
     serialObject = serial.Serial(
-        baudrate=FSR_ARDUINO_BAUD,
-        port=FSR_ARDUINO_PORT,
-        bytesize=serial.EIGHTBITS,
-        parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE,
-        timeout=FSR_ARDUINO_TIMEOUT,
-        rtscts=True)
+            baudrate=configVariables["ARDUINO_BAUD"],
+            port=configVariables["ARDUINO_PORT"],
+            bytesize=serial.EIGHTBITS,
+            parity=serial_parity,
+            stopbits=serial.STOPBITS_ONE,
+            timeout=configVariables["ARDUINO_CONN_TIMEOUT"],
+            rtscts=True)
 
-    ARDUINO_SERIAL_STATUS = 0
-    menu_choices = 100
+    # timeout of 0 is a non-blocking operation
+    #start_time = current_time_ms()
+    ARD_CONN_IS_READY = False
+    ARD_CONN_IS_READY = handshake_connection(serialObject=serialObject, timeout=configVariables["ARDUINO_HSHK_TIMEOUT"], pollingRate=configVariables["ARDUINO_HSHK_POLLRATE"])
 
-    while (menu_choices != 0):
-        menu_choices = int(
-            input("MENU \n[1] Initialise Instruments \n[2] Start logging\n[3] \n[4] \n[0] Exit\n Type your input: "))
-        match menu_choices:
-            case 0:
-                exit()
-            case 1:
-                timer = threading.Timer(4.0, initialise_arduino_serial_comm, args=(serialObject))
-                timer.start()
+    # while True:
+    #     if (((current_time_ms() - start_time) > configVariables["ARDUINO_HSHK_TIMEOUT"]) or ARD_CONN_IS_READY):
+    #         break
 
-                while (ARDUINO_SERIAL_STATUS != 1):
-                    pass
-
-                if (ARDUINO_SERIAL_STATUS == 1):
-                    print(get_FSR_vals(serialObject, dataselection="all"))
-
-                print("ARD Serial Status: ", ARDUINO_SERIAL_STATUS)
-            case 2:
-                pass
-            case 3:
-                pass
-            case _:
-                pass
+    return serialObject, ARD_CONN_IS_READY

@@ -123,16 +123,12 @@ def initialise_arduino_serial_comm(serialObject):
     
     timer = threading.Timer(1.0, initialise_arduino_read_subroutine, args=(serialObject))
     timer.start()
-    
-# -------------------
-# VISA TnM Instrument
-# -------------------
 
 # ----------
 # Main
 # ----------
         
-def main():
+def ard_main():
         
     # Initialise VNA
     #VNAInstrument = RsInstrument(resource_name=RESOURCE_STRING_USB, id_query=True, reset=True, SelectVisa="rs")
@@ -157,33 +153,14 @@ def main():
             rtscts=True)
     
     ARDUINO_SERIAL_STATUS = 0
-    menu_choices = 100
-    
-    while (menu_choices != 0):
-        menu_choices = int(input("MENU \n[1] Initialise Instruments \n[2] Start logging\n[3] \n[4] \n[0] Exit\n Type your input: "))
-        match menu_choices: 
-            case 0:
-                exit()
-            case 1:
-                timer = threading.Timer(4.0, initialise_arduino_serial_comm, args=(serialObject))
-                timer.start()
-                    
-                while(ARDUINO_SERIAL_STATUS != 1):
-                    pass
-                
-                if (ARDUINO_SERIAL_STATUS == 1):
-                    print(get_FSR_vals(serialObject, dataselection="all"))
-                    
-                print("ARD Serial Status: ", ARDUINO_SERIAL_STATUS)
-            case 2:
-                pass
-            case 3:
-                pass
-            case _:
-                pass
 
-    
+    timer = threading.Timer(4.0, initialise_arduino_serial_comm, args=(serialObject))
+    timer.start()
 
-# Press the green button in the gutter to run the script.
-#if __name__ == '__main__':
-    #main()
+    while(ARDUINO_SERIAL_STATUS != 1):
+        pass
+
+    if (ARDUINO_SERIAL_STATUS == 1):
+        print(get_FSR_vals(serialObject, dataselection="all"))
+
+    print("ARD Serial Status: ", ARDUINO_SERIAL_STATUS)
