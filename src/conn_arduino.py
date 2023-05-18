@@ -1,0 +1,180 @@
+#!/usr/bin/env python3
+
+# ----------
+# Imports
+# ----------
+
+# Serial communication with Arduino
+import serial
+import io
+
+# Others
+from copy import deepcopy
+import json
+import threading
+import time
+
+# ----------
+# Global Var
+# ----------
+
+# Setting some global variables
+FSR_ARDUINO_PORT = "/dev/tty.usbmodem14101"  # The Arduino Serial device. COMxx on Windows, ttyUSBx on UNIX
+FSR_ARDUINO_BAUD = 9600  # Ensure this matches the rate on Arduino
+FSR_ARDUINO_TIMEOUT = 0  # In seconds. 0 is non-blocking mode
+ARDUINO_SERIAL_STATUS = int()  # Arduino Serial Status Flag
+
+RESOURCE_STRING_USB = "USB::0x0AAD::0x0119::022019943::INSTR"  # USB-TMC (Test and Measurement Class)
+VNA_VISA_PORT = str()
+
+
+# -----------
+# Arduino FSR
+# -----------
+
+def get_FSR_vals(serialObject, data_selection: str):
+    print("DEBUG I'm in get_FSR_vals")
+    read_data = str()
+    write_data = str()
+
+    cmds = {
+        "voltage": "INST:READ:VOL\n",
+        "resistance": "INST:READ:RES\n",
+        "force": "INST:READ:FOR\n",
+        "all": "INST:READ:ALL\n"
+    }
+
+    # Ignore any invalid syntax error. Your inting system may not be updated. "Match" was added in python 3.10
+    match data_selection:
+        case "voltage":
+            write_data = cmds["voltage"]
+        case "resistance":
+            write_data = cmds["resistance"]
+        case "force":
+            write_data = cmds["force"]
+        case "all":
+            write_data = cmds["all"]
+        case _:
+            write_data = cmds["all"]
+
+    if serialObject.isOpen():
+        try:
+            serialObject.flushInput()
+            serialObject.flushOutput()
+
+            write_serial(write_data, serialObject)
+            read_data = read_serial(serialObject)
+
+        except Exception as err:
+            print("Error! Error when writing and reading from Serial")
+            print(err)
+
+    return read_data
+
+
+def read_serial(serialObject):
+    print("DEBUG I'm in read_serial")
+    # print(serialObject)
+    incoming_data = str()
+    if serialObject.isOpen():
+        try:
+            serialObject.flush()
+            incoming_data = serialObject.readline().decode(encoding="ascii").strip()
+        except Exception as Error:
+            print(Error)
+    return incoming_data
+
+
+def write_serial(write_data: str, serialObject):
+    print("DEBUG I'm in write_serial")
+    if serialObject.isOpen():
+        try:
+            serialObject.flush()
+            serialObject.write(write_data.encode(encoding="ascii"))
+        except Exception as error:
+            print(error)
+
+
+def initialise_arduino_read_subroutine(serialObject):
+    print("DEBUG I'm in initialise_sub_read")
+    while (ARDUINO_SERIAL_STATUS == 0):
+        initialisation_read_data = read_serial(serialObject)
+
+        # print(initialisation_read_data)
+        # print(initialisation_read_data == "INIT:RXTX:SUC")
+
+        if (initialisation_read_data == "INIT:RXTX:SUC"):
+            ARDUINO_SERIAL_STATUS = 1
+        else:
+            ARDUINO_SERIAL_STATUS = 0
+
+
+def initialise_arduino_serial_comm(serialObject):
+    print("DEBUG I'm in initialise_arduino_serial_comm")
+
+    initialisation_write_data = "INIT:RXTX:CHK\n"
+    initialisation_read_data = str()
+
+    write_serial(initialisation_write_data, serialObject)
+
+    timer = threading.Timer(1.0, initialise_arduino_read_subroutine, args=(serialObject))
+    timer.start()
+
+
+# -------------------
+# VISA TnM Instrument
+# -------------------
+
+# ----------
+# Main
+# ----------
+
+def main():
+    # Initialise VNA
+    # VNAInstrument = RsInstrument(resource_name=RESOURCE_STRING_USB, id_query=True, reset=True, SelectVisa="rs")
+
+    # ======================
+    # Initialise Serial Comm
+    # ----------------------
+    # Notes
+    # * Hardware Handshaking Enabled with rtscts flag
+    # * Arduino will reset itself when serial comm is initiated
+    # * This is non-blocking. Therefore, you will need to do another handshake
+    #   with "INIT:RXTX:CHK\n" which, if the Arduino is active will return
+    #   "INIT:RXTX:SUC\n"
+
+    serialObject = serial.Serial(
+        baudrate=FSR_ARDUINO_BAUD,
+        port=FSR_ARDUINO_PORT,
+        bytesize=serial.EIGHTBITS,
+        parity=serial.PARITY_NONE,
+        stopbits=serial.STOPBITS_ONE,
+        timeout=FSR_ARDUINO_TIMEOUT,
+        rtscts=True)
+
+    ARDUINO_SERIAL_STATUS = 0
+    menu_choices = 100
+
+    while (menu_choices != 0):
+        menu_choices = int(
+            input("MENU \n[1] Initialise Instruments \n[2] Start logging\n[3] \n[4] \n[0] Exit\n Type your input: "))
+        match menu_choices:
+            case 0:
+                exit()
+            case 1:
+                timer = threading.Timer(4.0, initialise_arduino_serial_comm, args=(serialObject))
+                timer.start()
+
+                while (ARDUINO_SERIAL_STATUS != 1):
+                    pass
+
+                if (ARDUINO_SERIAL_STATUS == 1):
+                    print(get_FSR_vals(serialObject, dataselection="all"))
+
+                print("ARD Serial Status: ", ARDUINO_SERIAL_STATUS)
+            case 2:
+                pass
+            case 3:
+                pass
+            case _:
+                pass
