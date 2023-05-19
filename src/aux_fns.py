@@ -17,7 +17,7 @@ def get_default_configuration():
         "ARDUINO_CONN_PARITY": "N",
         "ARDUINO_CONN_TIMEOUT": 0,
         "ARDUINO_HSHK_TIMEOUT": 6.0,
-        "ARDUINO_HSHK_POLLRATE": 1.0,
+        "ARDUINO_HSHK_POLLRATE": 0.2,
         "VNA_RESOURCE": "TCPIP0::172.16.10.10::INSTR",
         "OUTPUT_FOLDER": r'results',
         "OUTPUT_FILE_NAME": r'logfile',

@@ -37,6 +37,9 @@ def main():
     # Initialise a variable for user input when user browses through the menus
     menu_choice = -1
 
+    # Initialise objects and status flags
+    serialObject, RSINST, ARD_CONN_IS_READY, RSINST_CONN_IS_READY = None, None, False, False
+
     while (menu_choice != 0):
         print(GUI.get_menu_text(menuName="main_menu"))
         menu_choice = AUXFN.get_user_choice(displayText="Input: ", returnType="int")
@@ -46,8 +49,8 @@ def main():
 
             # Initialise Devices
             CONFIG_VARS["ARDUINO_PORT"] = "COM3"
-            serialObject, ARD_CONN_READY = ARDCONN.establish_connection(configVariables=CONFIG_VARS)
-            print(ARD_CONN_READY)
+            serialObject, ARD_CONN_IS_READY = ARDCONN.establish_connection(configVariables=CONFIG_VARS)
+            print("DEBUG Arduino Connection Status:", ARD_CONN_IS_READY)
 
             # Check whether both devices are initialised by checking the status flags
             # Implement status flags
@@ -76,15 +79,20 @@ def main():
                     pass
 
             menu_choice = -1
-        elif (menu_choice == 2):
+        elif (menu_choice == 3):
             # Data Acquisition
 
             # Check for the status flag
             # Start data acquisition process
 
+            if (ARD_CONN_IS_READY == True):
+                results = ARDCONN.get_FSR_vals(serialObject=serialObject, data_selection="voltage")
+                print(results)
+
             menu_choice = -1
         else:
             print("NOTICE: Exiting program...")
+            exit()
 
     return
 
