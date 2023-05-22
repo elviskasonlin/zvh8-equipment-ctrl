@@ -35,9 +35,9 @@ def get_user_choice(displayText: str, returnType: str):
     Gets the user's choice using input()
     Args:
         * display_text (`str`): The text to be displayed in `input()`
-        * return_type (`str`): The target conversion.
+        * return_type (`str`): The target conversion. Available types are `float`, `int`, and `bool`. Default is string.
     Returns:
-        * (`str`, `bool`, `int`, `float`): The user's input converted to the target type as specified in `return_type`
+        * (`str`, `bool`, `int`, `float`) The user's input converted to the target type as specified in `return_type`
     """
 
     buffer = input(displayText)
@@ -96,7 +96,8 @@ def save_configuration(currentWorkingDir: pathlib.Path, fileName: str, directory
     # Setting up a default file location
     # Creates the "config" directory if it doesn't exist
     dir_loc = currentWorkingDir.joinpath(f"{directoryName}/")
-    os.mkdir(dir_loc)
+    if not os.path.exists(dir_loc):
+        os.makedirs(dir_loc, exist_ok=False)
 
     # Specifying the location of the save file (default to be in the parent folder)
     file_loc = dir_loc.joinpath(fileName + ".json")

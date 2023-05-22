@@ -10,6 +10,7 @@ Version Alpha 1.0
 Created on Tue May 16 17:32:29 2023
 @author: elviskasonlin
 """
+import serial.tools.list_ports
 
 import src.aux_fns as AUXFN
 import src.conn_arduino as ARDCONN
@@ -27,9 +28,11 @@ def main():
     CURRENT_WORKING_DIR = pathlib.Path.cwd()
     print(CURRENT_WORKING_DIR)
 
+    # See if configuration variables json file already exists
     try:
-        CONFIG_VARS = AUXFN.load_configuration(currentWorkingDir=CURRENT_WORKING_DIR, fileName=DEFAULT_CONFIG_VARS["CONFIG_FILE_NAME"],directoryName=DEFAULT_CONFIG_VARS["CONFIG_FOLDER"]) # See if configuration variables json file already exists
-    except FileNotFoundError: # If the configuration variables json file does not exist, create one from the default configuration
+        CONFIG_VARS = AUXFN.load_configuration(currentWorkingDir=CURRENT_WORKING_DIR, fileName=DEFAULT_CONFIG_VARS["CONFIG_FILE_NAME"],directoryName=DEFAULT_CONFIG_VARS["CONFIG_FOLDER"])
+    except FileNotFoundError:
+        # If the configuration variables json file does not exist, create one from the default configuration
         CONFIG_VARS = copy.deepcopy(DEFAULT_CONFIG_VARS)
         AUXFN.save_configuration(currentWorkingDir=CURRENT_WORKING_DIR,fileName=CONFIG_VARS["CONFIG_FILE_NAME"], directoryName=CONFIG_VARS["CONFIG_FOLDER"], configData=CONFIG_VARS)
         print("WARNING Configuration file not found. Loaded default configuration! Saved a new configuration file with default settings.")
@@ -47,10 +50,14 @@ def main():
         if (menu_choice == 1):
             # Device Initialisation
 
-            # Initialise Devices
+            # Initialise Arduino Serial
             CONFIG_VARS["ARDUINO_PORT"] = "COM3"
             serialObject, ARD_CONN_IS_READY = ARDCONN.establish_connection(configVariables=CONFIG_VARS)
             print("DEBUG Arduino Connection Status:", ARD_CONN_IS_READY)
+
+            # Initialise R&S VNA
+            RSINST, RSINST_CONN_IS_READY = INSTCONN.establish_connection(configVars=CONFIG_VARS)
+            print("DEBUG RS Inst. Connection Status:", RSINST_CONN_IS_READY)
 
             # Check whether both devices are initialised by checking the status flags
             # Implement status flags
@@ -66,15 +73,98 @@ def main():
             menu_choice = AUXFN.get_user_choice(displayText="Input: ", returnType="int")
             match menu_choice:
                 case 1:
-                    print("Change save folder name to: ")
+                    print("Change save folder name")
+                    print(f"Current save folder name is: {CONFIG_VARS['OUTPUT_FOLDER']}")
+
+                    choice, fname = str(), str()
+                    while (fname != "0"):
+                        fname = AUXFN.get_user_choice(displayText="Change folder name to ([0] to cancel): ", returnType="str")
+                        if (fname == "0"):
+                            print("Returning back to menu...")
+                            break
+                        choice = AUXFN.get_user_choice(displayText=f"You have entered `{fname}`, confirm? [Y]es [N]o: ", returnType="str")
+                        match choice:
+                            case "Y" | "y" | "Yes" | "yes":
+                                print("Updating configuration file with new output folder name...")
+                                CONFIG_VARS["OUTPUT_FOLDER"] = fname
+                                AUXFN.save_configuration(currentWorkingDir=CURRENT_WORKING_DIR,
+                                                         fileName=CONFIG_VARS["CONFIG_FILE_NAME"],
+                                                         directoryName=CONFIG_VARS["CONFIG_FOLDER"],
+                                                         configData=CONFIG_VARS)
+                                break
+                            case "N" | "n" | "No" | "no":
+                                continue
+                            case _:
+                                print("An invalid entry, please try again")
+                                continue
                 case 2:
-                    print("Change save file name to: ")
+                    print("Change save file name")
+                    print(f"Current save file name is: {CONFIG_VARS['OUTPUT_FILE_NAME']}")
+
+                    choice, fname = str(), str()
+                    while (fname != "0"):
+                        fname = AUXFN.get_user_choice(displayText="Change file name to ([0] to cancel): ", returnType="str")
+                        if (fname == "0"):
+                            print("Returning back to menu...")
+                            break
+                        choice = AUXFN.get_user_choice(displayText=f"You have entered `{fname}`, confirm? [Y]es [N]o: ", returnType="str")
+                        match choice:
+                            case "Y" | "y" | "Yes" | "yes":
+                                print("Updating configuration file with new output file name...")
+                                CONFIG_VARS["OUTPUT_FILE_NAME"] = fname
+                                AUXFN.save_configuration(currentWorkingDir=CURRENT_WORKING_DIR,
+                                                         fileName=CONFIG_VARS["CONFIG_FILE_NAME"],
+                                                         directoryName=CONFIG_VARS["CONFIG_FOLDER"],
+                                                         configData=CONFIG_VARS)
+                                break
+                            case "N" | "n" | "No" | "no":
+                                continue
+                            case _:
+                                print("An invalid entry, please try again")
+                                continue
                 case 3:
-                    print("Change arduino port to: ")
+                    # Check for available serial ports and get the device paths as string list
+                    available_serial_dvcs = serial.tools.list_ports.comports()
+                    available_serial_dvcs_in_strlist = list()
+                    for each in available_serial_dvcs:
+                        available_serial_dvcs_in_strlist.append(each.device)
+                    print(f"Current port is: {CONFIG_VARS['ARDUINO_PORT']}")
+                    print(f"Here are the available ports: {available_serial_dvcs_in_strlist}")
+
+                    # Get port choice
+                    port_choice = str()
+                    while (port_choice not in available_serial_dvcs_in_strlist and port_choice != "0"):
+                        port_choice = AUXFN.get_user_choice(displayText="Enter a valid port path ([0] to cancel): ", returnType="str")
+                    else:
+                        # Run once the loop is exited
+                        if port_choice == "0":
+                            # Do nothing if user chooses to cancel
+                            pass
+                        else:
+                            # Save the resulting valid port to config file
+                            CONFIG_VARS["ARDUINO_PORT"] = port_choice
+                            print(f"Saving new port '{port_choice}' to config file...")
+                            AUXFN.save_configuration(currentWorkingDir=CURRENT_WORKING_DIR,fileName=CONFIG_VARS["CONFIG_FILE_NAME"], directoryName=CONFIG_VARS["CONFIG_FOLDER"], configData=CONFIG_VARS)
                 case 4:
-                    print("Change R&S instrument port to: ")
-                case 5:
-                    AUXFN.save_configuration(CONFIGURATION_VARS["F"])
+                    print("Change R&S instrument port")
+                    # Check for available R&S instruments
+                    available_instruments = INSTCONN.list_available_devices()
+                    print(f"Current instrument is: {CONFIG_VARS['VNA_RESOURCE']}")
+                    print(f"Here are the available instruments: {available_instruments}")
+
+                    port_choice = str()
+                    while (port_choice not in available_instruments and port_choice != "0"):
+                        port_choice = AUXFN.get_user_choice(displayText="Enter a valid instrument resources ([0] to cancel): ", returnType="str")
+                    else:
+                        # Run once the loop is exited
+                        if port_choice == "0":
+                            # Do nothing if user chooses to cancel
+                            pass
+                        else:
+                            # Save the resulting valid port to config file
+                            CONFIG_VARS["VNA_RESOURCE"] = port_choice
+                            print(f"Saving new instrument resource '{port_choice}' to config file...")
+                            AUXFN.save_configuration(currentWorkingDir=CURRENT_WORKING_DIR,fileName=CONFIG_VARS["CONFIG_FILE_NAME"], directoryName=CONFIG_VARS["CONFIG_FOLDER"], configData=CONFIG_VARS)
                 case _:
                     pass
 
