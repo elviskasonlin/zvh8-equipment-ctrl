@@ -1,4 +1,5 @@
 import RsInstrument
+import src.aux_fns as AUXFN
 
 def list_available_devices():
     instrument_list = RsInstrument.RsInstrument.list_resources("?*")
@@ -16,10 +17,10 @@ def establish_connection(configVars: dict):
         instrument.opc_timeout = 5000
         instrument.clear_status()
         idn_response = instrument.query_str_with_opc("*IDN?")
-        print(f"Connected to {idn_response}")
+        print(f"Device connected to is {idn_response}")
         RSINST_CONN_IS_READY = True
     except RsInstrument.ResourceError:
-        print("ERROR! Instrument not found/unable to connect")
+        print("ERROR! Instrument VNA not found/unable to connect")
         RSINST_CONN_IS_READY = False
         return instrument, RSINST_CONN_IS_READY
 
@@ -48,49 +49,30 @@ def calibrate_instrument(instrument: RsInstrument.RsInstrument, configVars: dict
 
     # https://github.com/Rohde-Schwarz/Examples/blob/main/VectorNetworkAnalyzers/Python/RsInstrument/RsInstrument_ZNB_CAL_P1_Save_Reload.py
 
-    print("CALIBRATE: Calibration Started")
-    vna_cal_kit_id = configVars["VNA_CAL_KIT_ID"]
-    # Select cal kit
-    instrument.write_str_with_opc(f'SENSe1:CORRection:CKIT:PC292:SELect "{vna_cal_kit_id}"')
-    # Define gender of the port
-    instrument.write_str_with_opc('SENSe1:CORRection:COLLect:CONN PC292MALE')
-    # Choose OSM cal type
-    instrument.write_str_with_opc('SENSe1:CORRection:COLLect:METHod:DEFine "NewCal", FOPort, 1')
-    # Avoid to save the data to your default calibration
-    instrument.write_str_with_opc('SENSe:CORRection:COLLect:ACQuire:RSAVe:DEFault OFF')
+    instrument_cal_status = instrument.query_str_with_opc("CAL:MODE?")
+    print(instrument_cal_status)
 
-    confirmation_input = None
-    # Open
-    print("Please connect OPEN to port 1 and confirm by pressing '1': ")
-    confirmation_input = int(input())
-    if (confirmation_input != 1):
-        print(f"You have entered {confirmation_input}. Returning back to menu.")
-        return False
-    instrument.write_str_with_opc('SENSe1:CORRection:COLLect:ACQuire:SELected OPEN, 1')
-    confirmation_input = None
-    # Short
-    print("Please connect SHORT to port 1 and confirm by pressing '1': ")
-    confirmation_input = int(input())
-    if (confirmation_input != 1):
-        print(f"You have entered {confirmation_input}. Returning back to menu.")
-        return False
-    instrument.write_str_with_opc('SENSe1:CORRection:COLLect:ACQuire:SELected SHORT, 1')
-    confirmation_input = None
-    # Load/Match
-    print("Please connect MATCH/LOAD to port 1 and confirm by pressing '1': ")
-    confirmation_input = int(input())
-    if (confirmation_input != 1):
-        print(f"You have entered {confirmation_input}. Returning back to menu.")
-        return False
-    instrument.write_str_with_opc('SENSe1:CORRection:COLLect:ACQuire:SELected MATCH, 1')
-    confirmation_input = None
+    current_status = str()
+    user_input = str()
 
-    calibration_name = "p1-glucoring.cal"
-    print("CALIBRATE: Calibration done", "Applying calibration...")
-    instrument.write_str_with_opc('SENSe1:CORRection:COLLect:SAVE:SELected')
-    print(f"CALIBRATE: Saving calibration as {calibration_name}")
-    instrument.write_str_with_opc(f'MMEMory:STORE:CORRection 1,"{calibration_name}"')
-    return True
+    if instrument_cal_status != 1:
+        current_status = instrument.query_str_with_opc("CALibration:STARt? S11Cal")
+        while (current_status != "Calibration done" and user_input != 0):
+            print("CALIBRATE", current_status)
+            user_input = AUXFN.get_user_choice(displayText="Input (Confirm by pressing [1], Cancel by pressing [0]:", returnType="int")
+            if user_input == 0:
+                print("CALIBRATE Aborting calibration")
+                instrument.write_str_with_opc("CALibration:ABORt")
+                return False
+            else:
+                if (current_status != "Calibration done"):
+                    current_status = instrument.query_str_with_opc("CAL:CONT?")
+                continue
+        return True
+    else:
+        print("CALIBRATE This measurement is already calibrated")
+
+    return
 
 
 def acquire_vna_data(instrument: RsInstrument.RsInstrument, configVars: dict):
@@ -109,9 +91,9 @@ def acquire_vna_data(instrument: RsInstrument.RsInstrument, configVars: dict):
     instrument.write_str_with_opc("CALCulate:MARKer1:MINimum:PEAK")
 
     instrument.write_str_with_opc("CALCulate:MARKer1:MODE RPDB") # Marker format of Magnitude in dB with Phase
-    minpt_mag = str(znl.query_str_with_opc("CALC:MARK1:Y?")).split(",")
+    minpt_mag = str(instrument.query_str_with_opc("CALC:MARK1:Y?")).split(",")
     instrument.write_str_with_opc("CALCulate:MARKer1:MODE IMPedance") # Market format of Impedance with real and imag.
-    minpt_imp = str(znl.query_str_with_opc("CALC:MARK1:Y?")).split(",")
+    minpt_imp = str(instrument.query_str_with_opc("CALC:MARK1:Y?")).split(",")
 
     minpt_mag_dB = minpt_mag[0]
     minpt_mag_phase = minpt_mag[1]
@@ -120,10 +102,11 @@ def acquire_vna_data(instrument: RsInstrument.RsInstrument, configVars: dict):
 
     instrument.write_str_with_opc("FORMat ASCii")
     trace_data = instrument.query_bin_or_ascii_float_list_with_opc("TRACe:DATA? TRACE1")
-    print("DEBUG CH1 Trace Result Data is: ", data)
+    #print("DEBUG CH1 Trace Result Data is: ", trace_data)
+    vna_bandwidth = configVars["VNA_STOP_FREQ"] - configVars["VNA_START_FREQ"]
     min_pt_mag = min(trace_data)
-    min_pt_freq = trace_data.index(min_pt_mag) / (xpoints - 1) * vna_bandwidth + vna_start_freq
-    print(f"DEBUG min freq: {min_pt_freq}")
+    min_pt_freq = trace_data.index(min_pt_mag) / (configVars["VNA_POINTS"] - 1) * vna_bandwidth + configVars["VNA_START_FREQ"]
+    #print(f"DEBUG min freq: {min_pt_freq}")
 
     return_data = {
         "minpt_mag_dB": minpt_mag_dB,

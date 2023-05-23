@@ -9,6 +9,8 @@ Created on Wed May 17 2023
 import waiting
 import serial
 import time
+
+
 def read_serial(serialObject: serial.Serial):
     """
     Serial reads from the Arduino. Written on top of the .readline function to include decoding and formatting.
@@ -18,17 +20,18 @@ def read_serial(serialObject: serial.Serial):
     Returns:
 
     """
-    print("DEBUG I'm in read_serial")
+    # print("DEBUG I'm in read_serial")
     # print(serialObject)
     incoming_data = str()
     if serialObject.isOpen():
         try:
             serialObject.flush()
             incoming_data = serialObject.readline().decode(encoding="ascii").strip()
-            print("DEBUG Incoming data: ", incoming_data)
+            # print("DEBUG Incoming data: ", incoming_data)
         except Exception as Error:
             print(Error)
     return incoming_data
+
 
 def write_serial(write_data: str, serialObject: serial.Serial):
     """
@@ -37,13 +40,14 @@ def write_serial(write_data: str, serialObject: serial.Serial):
         write_data (`str`): The data to write to arduino
         serialObject (`serial.Serial`): The serial object
     """
-    print("DEBUG I'm in write_serial")
+    # print("DEBUG I'm in write_serial")
     if serialObject.isOpen():
         try:
             serialObject.flush()
             serialObject.write(write_data.encode(encoding="ascii"))
         except Exception as error:
             print(error)
+
 
 def poll_arduino(serialObject: serial.Serial):
     """
@@ -72,9 +76,10 @@ def poll_arduino(serialObject: serial.Serial):
         serialObject.reset_output_buffer()
         return False
 
+
 def handshake_connection(serialObject: serial.Serial, timeout: float, pollingRate: float):
     """
-
+    Used for initial handshaking between this script and arduino
     Args:
         serialObject (`serial.Serial`): The serial object
         timeout (`float`): The timeout duration in seconds
@@ -83,20 +88,20 @@ def handshake_connection(serialObject: serial.Serial, timeout: float, pollingRat
     Returns:
          (`bool`) Whether the connection is successful
     """
-    CONN_STATUS_FLAG = False
+    conn_status_flag = False
 
     try:
-        CONN_STATUS_FLAG = waiting.wait(lambda:poll_arduino(serialObject), on_poll=lambda: print(f"Polling at the rate of {pollingRate}s. Waiting for Arduino until timeout of {timeout}s..."), timeout_seconds=timeout, sleep_seconds=pollingRate)
+        conn_status_flag = waiting.wait(lambda:poll_arduino(serialObject), on_poll=lambda: print(f"Polling at the rate of {pollingRate}s. Waiting for Arduino until timeout of {timeout}s..."), timeout_seconds=timeout, sleep_seconds=pollingRate)
     except TimeoutExpired:
         print("Operation Timed Out! Unable to establish connection with Arduino")
-        return False
+    return conn_status_flag
 
-    return CONN_STATUS_FLAG
 
 def poll_arduino_reading(serialObject: serial.Serial):
     read_data = read_serial(serialObject)
     if (read_data != ""):
         return read_data
+
 
 def get_FSR_vals(serialObject: serial.Serial, data_selection: str):
     """
@@ -106,10 +111,10 @@ def get_FSR_vals(serialObject: serial.Serial, data_selection: str):
         serialObject (`serial.Serial`): The serial object
         data_selection (`str`): Which data you would like from the FSR. Valid options are "voltage", "resistance", "force", and "all"
 
-    Returns:
+    Returns: (`str`, `bool`) data and whether the connection was successful. If unsuccessful, `"", False`
 
     """
-    print("DEBUG I'm in get_FSR_vals")
+    # print("DEBUG I'm in get_FSR_vals")
     read_data = str()
     write_data = str()
 
@@ -120,7 +125,6 @@ def get_FSR_vals(serialObject: serial.Serial, data_selection: str):
         "all": "INST:READ:ALL\n"
     }
 
-    # Ignore any invalid syntax error. Your inting system may not be updated. "Match" was added in python 3.10
     match data_selection:
         case "voltage":
             write_data = cmds["voltage"]
@@ -143,25 +147,27 @@ def get_FSR_vals(serialObject: serial.Serial, data_selection: str):
             try:
                 pollingRate = 0.1
                 timeout = 1.0
-                read_data =  waiting.wait(lambda: poll_arduino_reading(serialObject=serialObject), on_poll=lambda: print(f"DEBUG Polling at the rate of {pollingRate}s. Waiting for Arduino until timeout of {timeout}s..."), timeout_seconds=timeout, sleep_seconds=pollingRate)
-            except TimeoutExpired:
+                read_data = waiting.wait(lambda: poll_arduino_reading(serialObject=serialObject), timeout_seconds=timeout, sleep_seconds=pollingRate)
+            except waiting.exceptions.TimeoutExpired:
                 print("Operation Timed Out! Unable to get any results from Arduino")
-                return False
-            print("DEBUG: FSR read_data:", read_data)
+                return read_data, False
+            # print("DEBUG: FSR read_data:", read_data)
         except Exception as err:
             print("Error! Error when writing and reading from Serial")
             print(err)
+            return read_data, False
+    return read_data, True
 
-    return read_data
 
 def current_time_ms():
     return round(time.time() * 1000)
 
+
 def establish_connection(configVariables: dict):
-    ARD_CONN_IS_READY = False
+    ard_conn_is_ready = False
 
     serial_parity = None
-    serialObject = None
+    serial_object = None
 
     match configVariables["ARDUINO_CONN_PARITY"]:
         case "E":
@@ -172,7 +178,7 @@ def establish_connection(configVariables: dict):
             serial_parity = serial.PARITY_NONE
 
     try:
-        serialObject = serial.Serial(
+        serial_object = serial.Serial(
                 baudrate=configVariables["ARDUINO_BAUD"],
                 port=configVariables["ARDUINO_PORT"],
                 bytesize=serial.EIGHTBITS,
@@ -182,15 +188,16 @@ def establish_connection(configVariables: dict):
                 rtscts=True)
     except serial.SerialException as err:
         print("ERROR! Unable to connect to the Arduino. Are you sure the Arduino is connected and its connection port is specified correctly?")
-        return serialObject, ARD_CONN_IS_READY
+        ard_conn_is_ready = False
+        return serial_object, ard_conn_is_ready
 
 
     # timeout of 0 is a non-blocking operation
     #start_time = current_time_ms()
-    ARD_CONN_IS_READY = handshake_connection(serialObject=serialObject, timeout=configVariables["ARDUINO_HSHK_TIMEOUT"], pollingRate=configVariables["ARDUINO_HSHK_POLLRATE"])
+    ard_conn_is_ready = handshake_connection(serialObject=serial_object, timeout=configVariables["ARDUINO_HSHK_TIMEOUT"], pollingRate=configVariables["ARDUINO_HSHK_POLLRATE"])
 
     # while True:
     #     if (((current_time_ms() - start_time) > configVariables["ARDUINO_HSHK_TIMEOUT"]) or ARD_CONN_IS_READY):
     #         break
 
-    return serialObject, ARD_CONN_IS_READY
+    return serial_object, ard_conn_is_ready

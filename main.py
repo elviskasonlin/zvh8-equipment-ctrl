@@ -5,7 +5,7 @@ Instrumentation control and data acquisition script
 For use in collecting the data from both the Vector Network Analyser and the Arduino (that is connected to force-sensing resistors)
 Currently implemented for Rohde and Schwarz ZVH8 Cable and Antenna Analyser and Arduino Uno (5V)
 
-Version Alpha 1.0
+Version Alpha 2.0
 
 Created on Tue May 16 17:32:29 2023
 @author: elviskasonlin
@@ -52,16 +52,30 @@ def main():
 
             # Initialise Arduino Serial
             CONFIG_VARS["ARDUINO_PORT"] = "COM3"
+            print("INITIALISE Establishing connection with Arduino...")
             serialObject, ARD_CONN_IS_READY = ARDCONN.establish_connection(configVariables=CONFIG_VARS)
-            print("DEBUG Arduino Connection Status:", ARD_CONN_IS_READY)
+            if (ARD_CONN_IS_READY == True):
+                print(f"SUCCESS Connected to {CONFIG_VARS['ARDUINO_PORT']}")
+            #print("DEBUG Arduino Connection Status:", ARD_CONN_IS_READY)
 
             # Initialise R&S VNA
+            print("INITIALISE Establishing connection with VNA...")
             RSINST, RSINST_CONN_IS_READY = INSTCONN.establish_connection(configVars=CONFIG_VARS)
-            print("DEBUG RS Inst. Connection Status:", RSINST_CONN_IS_READY)
+            if (RSINST_CONN_IS_READY == True):
+                print(f"SUCCESS Connected to {CONFIG_VARS['VNA_RESOURCE']}")
+            #print("DEBUG RS Inst. Connection Status:", RSINST_CONN_IS_READY)
 
             if (ARD_CONN_IS_READY == False) or (RSINST_CONN_IS_READY == False):
-                print("Failed to initialise one or more devices. Please check your connections and try again")
-
+                print("INITIALISE Failed to initialise one or more devices. Please check your connections and try again")
+            else:
+                inst_cal_status = bool()
+                if RSINST_CONN_IS_READY == True:
+                    print("INITIALISE Setting up VNA measurement settings...")
+                    INSTCONN.vna_measurement_setup(instrument=RSINST, configVars=CONFIG_VARS)
+                    inst_cal_status = INSTCONN.calibrate_instrument(instrument=RSINST, configVars=CONFIG_VARS)
+                print("SUCCESS All devices initialised")
+                if inst_cal_status != True:
+                    print("WARNING But device was not calibrated")
             menu_choice = -1
         elif (menu_choice == 2):
             # Settings
@@ -132,7 +146,7 @@ def main():
 
                     # Get port choice
                     port_choice = str()
-                    while (port_choice not in available_serial_dvcs_in_strlist and port_choice != "0"):
+                    while (port_choice not in available_serial_dvcs_in_strlist) and (port_choice != "0"):
                         port_choice = AUXFN.get_user_choice(displayText="Enter a valid port path ([0] to cancel): ", returnType="str")
                     else:
                         # Run once the loop is exited
@@ -152,7 +166,7 @@ def main():
                     print(f"Here are the available instruments: {available_instruments}")
 
                     port_choice = str()
-                    while (port_choice not in available_instruments and port_choice != "0"):
+                    while (port_choice not in available_instruments) and (port_choice != "0"):
                         port_choice = AUXFN.get_user_choice(displayText="Enter a valid instrument resources ([0] to cancel): ", returnType="str")
                     else:
                         # Run once the loop is exited
@@ -168,7 +182,7 @@ def main():
                     pass
 
             menu_choice = -1
-        elif (menu_choice == 3):
+        elif menu_choice == 3:
             # Data Acquisition
 
             # Check for the status flag
@@ -178,13 +192,10 @@ def main():
 
             # Start data acquisition process
             # Arduino
-            ard_results_test = ARDCONN.get_FSR_vals(serialObject=serialObject, data_selection="voltage")
-            print("DEBUG ard_results_test", ard_results_test)
+            ard_results_test, ard_read_status = ARDCONN.get_FSR_vals(serialObject=serialObject, data_selection="voltage")
+            print("DEBUG ard_results_test", ard_results_test, "ard_read_status:", ard_read_status)
 
             # R&S VNA
-            inst_cal_status = bool()
-            INSTCONN.vna_measurement_setup(instrument=RSINST, configVars=CONFIG_VARS)
-            inst_cal_status = INSTCONN.calibrate_instrument(instrument=RSINST, configVars=CONFIG_VARS)
             vna_data = INSTCONN.acquire_vna_data(instrument=RSINST, configVars=CONFIG_VARS)
             print("DEBUG vna_data", vna_data)
 
@@ -194,6 +205,7 @@ def main():
             exit()
 
     return
+
 
 if __name__ == '__main__':
     main()
