@@ -59,10 +59,9 @@ def main():
             RSINST, RSINST_CONN_IS_READY = INSTCONN.establish_connection(configVars=CONFIG_VARS)
             print("DEBUG RS Inst. Connection Status:", RSINST_CONN_IS_READY)
 
-            # Check whether both devices are initialised by checking the status flags
-            # Implement status flags
+            if (ARD_CONN_IS_READY == False) or (RSINST_CONN_IS_READY == False):
+                print("Failed to initialise one or more devices. Please check your connections and try again")
 
-            print("All devices initialised")
             menu_choice = -1
         elif (menu_choice == 2):
             # Settings
@@ -173,11 +172,21 @@ def main():
             # Data Acquisition
 
             # Check for the status flag
-            # Start data acquisition process
+            if (ARD_CONN_IS_READY == False) or (RSINST_CONN_IS_READY == False):
+                print("ERROR Data acquisition cannot commence. One or more devices not initialised. Please initialise your devices before starting data acquisition.")
+                continue
 
-            if (ARD_CONN_IS_READY == True):
-                results = ARDCONN.get_FSR_vals(serialObject=serialObject, data_selection="voltage")
-                print(results)
+            # Start data acquisition process
+            # Arduino
+            ard_results_test = ARDCONN.get_FSR_vals(serialObject=serialObject, data_selection="voltage")
+            print("DEBUG ard_results_test", ard_results_test)
+
+            # R&S VNA
+            inst_cal_status = bool()
+            INSTCONN.vna_measurement_setup(instrument=RSINST, configVars=CONFIG_VARS)
+            inst_cal_status = INSTCONN.calibrate_instrument(instrument=RSINST, configVars=CONFIG_VARS)
+            vna_data = INSTCONN.acquire_vna_data(instrument=RSINST, configVars=CONFIG_VARS)
+            print("DEBUG vna_data", vna_data)
 
             menu_choice = -1
         else:
