@@ -9,6 +9,7 @@ Created on Wed May 17 2023
 import json
 import pathlib
 import os
+from typing import Callable
 
 def get_default_configuration():
     CONFIGURATION_VARS = {
@@ -30,7 +31,7 @@ def get_default_configuration():
     }
     return CONFIGURATION_VARS
 
-def get_user_choice(displayText: str, returnType: str):
+def get_user_input(display_text: str, return_type: str):
     """
     Gets the user's choice using input()
     Args:
@@ -40,23 +41,37 @@ def get_user_choice(displayText: str, returnType: str):
         * (`str`, `bool`, `int`, `float`) The user's input converted to the target type as specified in `return_type`
     """
 
-    buffer = input(displayText)
+    buffer = None
     output = None
 
-    try:
-        if (returnType == "float"):
-            output = float(buffer)
-        elif (returnType == "int"):
-            output = int(buffer)
-        elif (returnType == "bool"):
-            output = bool(int(buffer))
-        else:
-            output = buffer
-    except Exception as err:
-        print("ERROR: In get_user_choice with msg ", err)
-        pass
+    while True:
+        buffer = input(display_text)
+        try:
+            if (return_type == "float"):
+                output = float(buffer)
+                break
+            elif (return_type == "int"):
+                output = int(buffer)
+                break
+            elif (return_type == "bool"):
+                output = buffer
+                match output:
+                    case "Yes" | "yes" | "Y" | "y" | 1 | "T" | "t" | "True" | "true":
+                        output = True
+                    case "No" | "no" | "N" | "n" | 0 | "F" | "f" | "False" | "false":
+                        output = False
+                    case _:
+                        raise ValueError
+                break
+            else:
+                output = buffer
+                break
+        except ValueError:
+            print("ERROR An invalid input was detected. Please enter again.")
+            continue
 
     return output
+
 
 def load_configuration(currentWorkingDir: pathlib.Path, fileName: str, directoryName: str):
     """
@@ -103,8 +118,9 @@ def save_configuration(currentWorkingDir: pathlib.Path, fileName: str, directory
     file_loc = dir_loc.joinpath(fileName + ".json")
     print(f"File saving at {file_loc}")
     # Write the data
-    f = open(file_loc, "w")
+    f = open(file_loc, "a") # 'a': For writing. File is created if it does not exist
     json.dump(configData, f)
     f.close()
 
     return
+

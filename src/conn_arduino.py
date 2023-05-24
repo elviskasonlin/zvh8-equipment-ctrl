@@ -126,11 +126,11 @@ def get_FSR_vals(serialObject: serial.Serial, data_selection: str):
     }
 
     match data_selection:
-        case "voltage":
+        case "voltage" | "vol":
             write_data = cmds["voltage"]
-        case "resistance":
+        case "resistance" | "res":
             write_data = cmds["resistance"]
-        case "force":
+        case "force" | "for":
             write_data = cmds["force"]
         case "all":
             write_data = cmds["all"]

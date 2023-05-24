@@ -59,7 +59,7 @@ def calibrate_instrument(instrument: RsInstrument.RsInstrument, configVars: dict
         current_status = instrument.query_str_with_opc("CALibration:STARt? S11Cal")
         while (current_status != "Calibration done" and user_input != 0):
             print("CALIBRATE", current_status)
-            user_input = AUXFN.get_user_choice(displayText="Input (Confirm by pressing [1], Cancel by pressing [0]:", returnType="int")
+            user_input = AUXFN.get_user_input(display_text="Input (Confirm by pressing [1], Cancel by pressing [0]:", return_type="int")
             if user_input == 0:
                 print("CALIBRATE Aborting calibration")
                 instrument.write_str_with_opc("CALibration:ABORt")

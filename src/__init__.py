@@ -1,1 +1,1 @@
-__all__ = ["conn_arduino", "conn_rsinstrument", "aux_fns", "gui"]
+__all__ = ["conn_arduino", "conn_rsinstrument", "aux_fns", "gui", "save_data"]
