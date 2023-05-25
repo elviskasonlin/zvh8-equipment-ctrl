@@ -111,7 +111,7 @@ def get_FSR_vals(serialObject: serial.Serial, data_selection: str):
         serialObject (`serial.Serial`): The serial object
         data_selection (`str`): Which data you would like from the FSR. Valid options are "voltage", "resistance", "force", and "all"
 
-    Returns: (`str`, `bool`) data and whether the connection was successful. If unsuccessful, `"", False`
+    Returns: (`list`, `bool`) data and whether the connection was successful. If unsuccessful, `"", False`
 
     """
     # print("DEBUG I'm in get_FSR_vals")
@@ -148,6 +148,10 @@ def get_FSR_vals(serialObject: serial.Serial, data_selection: str):
                 pollingRate = 0.1
                 timeout = 1.0
                 read_data = waiting.wait(lambda: poll_arduino_reading(serialObject=serialObject), timeout_seconds=timeout, sleep_seconds=pollingRate)
+                read_data = read_data.split(",")
+                for idx, each in enumerate(read_data):
+                    read_data[idx] = each.strip()
+                    read_data[idx] = float(read_data[idx])
             except waiting.exceptions.TimeoutExpired:
                 print("Operation Timed Out! Unable to get any results from Arduino")
                 return read_data, False

@@ -1,4 +1,6 @@
 import RsInstrument
+import pyvisa.errors
+
 import src.aux_fns as AUXFN
 
 def list_available_devices():
@@ -19,8 +21,12 @@ def establish_connection(configVars: dict):
         idn_response = instrument.query_str_with_opc("*IDN?")
         print(f"Device connected to is {idn_response}")
         RSINST_CONN_IS_READY = True
-    except RsInstrument.ResourceError:
+    except (RsInstrument.ResourceError, pyvisa.errors.VisaIOError):
         print("ERROR! Instrument VNA not found/unable to connect")
+        RSINST_CONN_IS_READY = False
+        return instrument, RSINST_CONN_IS_READY
+    except  RsInstrument.TimeoutException:
+        print("ERROR! Timed out when connection to the VNA")
         RSINST_CONN_IS_READY = False
         return instrument, RSINST_CONN_IS_READY
 
@@ -44,6 +50,14 @@ def vna_measurement_setup(instrument: RsInstrument.RsInstrument, configVars: dic
     instrument.write_str_with_opc("INIT1:CONT ON")
     return
 
+
+#     zna.write_str_with_opc('MMEMORY:STORE:CORRection 1, "AUTOCAL.cal"')  # Save current calibration
+#     zna.write_str_with_opc('MMEMORY:LOAD:CORRection 1, "AUTOCAL.cal"')  # And reload it (just to show the command)
+def load_calibration():
+    pass
+
+def store_calibration():
+    pass
 
 def calibrate_instrument(instrument: RsInstrument.RsInstrument, configVars: dict):
 

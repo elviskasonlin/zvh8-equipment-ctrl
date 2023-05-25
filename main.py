@@ -5,12 +5,13 @@ Instrumentation control and data acquisition script
 For use in collecting the data from both the Vector Network Analyser and the Arduino (that is connected to force-sensing resistors)
 Currently implemented for Rohde and Schwarz ZVH8 Cable and Antenna Analyser and Arduino Uno (5V)
 
-Version Alpha 2.0
+Version Beta 1.0
 
 Created on Tue May 16 17:32:29 2023
 @author: elviskasonlin
 """
 import datetime
+import time
 
 import serial.tools.list_ports
 
@@ -54,9 +55,9 @@ def main():
             # Device Initialisation
 
             # Initialise Arduino Serial
-            CONFIG_VARS["ARDUINO_PORT"] = "COM3"
             print("INITIALISE Establishing connection with Arduino...")
-            serialObject, ARD_CONN_IS_READY = ARDCONN.establish_connection(configVariables=CONFIG_VARS)
+            if not ARD_CONN_IS_READY:
+                serialObject, ARD_CONN_IS_READY = ARDCONN.establish_connection(configVariables=CONFIG_VARS)
             if (ARD_CONN_IS_READY == True):
                 print(f"SUCCESS Connected to {CONFIG_VARS['ARDUINO_PORT']}")
             #print("DEBUG Arduino Connection Status:", ARD_CONN_IS_READY)
@@ -182,6 +183,12 @@ def main():
                             CONFIG_VARS["VNA_RESOURCE"] = port_choice
                             print(f"Saving new instrument resource '{port_choice}' to config file...")
                             AUXFN.save_configuration(currentWorkingDir=CURRENT_WORKING_DIR,fileName=CONFIG_VARS["CONFIG_FILE_NAME"], directoryName=CONFIG_VARS["CONFIG_FOLDER"], configData=CONFIG_VARS)
+                case 5:
+                    print(f"Resetting config. file with default configuration...")
+                    CONFIG_VARS = copy.deepcopy(DEFAULT_CONFIG_VARS)
+                    AUXFN.save_configuration(currentWorkingDir=CURRENT_WORKING_DIR, fileName=CONFIG_VARS["CONFIG_FILE_NAME"],
+                                             directoryName=CONFIG_VARS["CONFIG_FOLDER"], configData=CONFIG_VARS)
+                    print(f"DONE Configuration file reset!")
                 case _:
                     pass
 
@@ -199,55 +206,66 @@ def main():
             daq_cycle_count = 0
             to_automate_daq = AUXFN.get_user_input(display_text="QUERY Is this an automated run based on set cycles without manual confirmation? [Y]es [N]o: ", return_type="bool")
             daq_cycles = AUXFN.get_user_input(display_text="Enter the number of cycles you would like to run the acquisition process for: ", return_type="int")
+            reading_delay = AUXFN.get_user_input(display_text="Enter the delay between readings in seconds: ", return_type="float")
 
-            print(f"DAQ You have chosen the following options: daq automation = {str(to_automate_daq)}, daq cycles = {str(daq_cycles)}")
+            print(f"DAQ You have chosen the following options: daq automation = {str(to_automate_daq)}, daq cycles = {str(daq_cycles)}, delay time = {str(reading_delay)}")
             choice_confirmed = AUXFN.get_user_input(display_text="Confirm choice? [Y]es [N]o: ", return_type="bool")
 
             if not choice_confirmed:
                 continue
 
+            # Initialise results save file
             field_names = ["Timestamp / HH:MM:SS.SS", "Sweep points / #", "Freq / Hz", "Mag. / dB", "Impedence / Ohm", "Trace Data", "FSR Resistance / Ohm", "FSR Voltage / V"]
-            current_time = datetime.datetime.now().timetuple()
-            file_timestamp = f"{current_time[0]}{current_time[1]}{current_time[2]}{current_time[3]}{current_time[4]}{current_time[5]}"
+            current_time_for_file_naming = datetime.datetime.now().timetuple()
+            file_timestamp = f"{current_time_for_file_naming[0]}{current_time_for_file_naming[1]}{current_time_for_file_naming[2]}{current_time_for_file_naming[3]}{current_time_for_file_naming[4]}{current_time_for_file_naming[5]}"
             print("DEBUG file_timestamp", file_timestamp)
             SAVEDATA.initialise_results_file(config_vars=CONFIG_VARS, field_names=field_names, timestamp=file_timestamp)
 
-            write_single_buffer = {
-                "Timestamp / HH:MM:SS.SS": 1,
-                "Sweep points / #": 1,
-                "Freq / Hz": 1 ,
-                "Mag. / dB": 1,
-                "Impedence / Ohm": 1,
-                "Trace Data": 1,
-                "FSR Resistance / Ohm": 1,
-                "FSR Voltage / V": 1
+            write_buffer_default = {
+                field_names[0]: None,
+                field_names[1]: None,
+                field_names[2]: None,
+                field_names[3]: None,
+                field_names[4]: None,
+                field_names[5]: None,
+                field_names[6]: None,
+                field_names[7]: None
             }
+            write_single_buffer = dict(write_buffer_default)
             write_big_buffer = []
 
+            daq_start_time = datetime.datetime.now()
             while daq_cycle_count < daq_cycles:
                 # Start data acquisition process
                 # R&S VNA
-                # vna_data = INSTCONN.acquire_vna_data(instrument=RSINST, configVars=CONFIG_VARS)
-                # print("DEBUG vna_data", vna_data)
+                vna_data = INSTCONN.acquire_vna_data(instrument=RSINST, configVars=CONFIG_VARS)
+                print("DEBUG vna_data", vna_data)
                 # # Arduino
-                # ard_results_vol, ard_read_status = ARDCONN.get_FSR_vals(serialObject=serialObject, data_selection="voltage")
-                # print("DEBUG ard_results_vol", ard_results_test, "ard_read_status:", ard_read_status)
-                # ard_results_res, ard_read_status = ARDCONN.get_FSR_vals(serialObject=serialObject, data_selection="resistance")
-                # print("DEBUG ard_results_res", ard_results_test, "ard_read_status:", ard_read_status)
+                ard_results_vol, ard_read_status = ARDCONN.get_FSR_vals(serialObject=serialObject, data_selection="voltage")
+                print("DEBUG ard_results_vol", ard_results_vol, "ard_read_status:", ard_read_status)
+                ard_results_res, ard_read_status = ARDCONN.get_FSR_vals(serialObject=serialObject, data_selection="resistance")
+                print("DEBUG ard_results_res", ard_results_res, "ard_read_status:", ard_read_status)
 
-                data_timestamp = str(datetime.datetime.now())
-                write_single_buffer["Timestamp / HH:MM:SS.SS"] = data_timestamp
-                write_single_buffer["Sweep points / #"] = 1
-                write_single_buffer["Freq / Hz"] = 1
-                write_single_buffer["Mag. / dB"] = 1
-                write_single_buffer["Impedence / Ohm"] = 1
-                write_single_buffer["Trace Data"] = 1
-                write_single_buffer["FSR Resistance / Ohm"] = 1
-                write_single_buffer["FSR Voltage / V"] = 1
-                write_big_buffer.append(write_single_buffer)
+                current_daq_process_time = datetime.datetime.now()
+                current_daq_process_time_delta = current_daq_process_time - daq_start_time
+                data_timestamp = current_daq_process_time_delta.total_seconds()
+                print("DEBUG data_timestamp", data_timestamp)
+
+                write_single_buffer[field_names[0]] = data_timestamp
+                write_single_buffer[field_names[1]] = CONFIG_VARS["VNA_POINTS"]
+                write_single_buffer[field_names[2]] = vna_data["min_pt_freq"]
+                write_single_buffer[field_names[3]] = vna_data["min_pt_mag"]
+                write_single_buffer[field_names[4]] = f'{vna_data["minpt_imp_real"]}+j{vna_data["minpt_imp_j"]}'
+                write_single_buffer[field_names[5]] = vna_data["trace_data"]
+                write_single_buffer[field_names[6]] = ard_results_res
+                write_single_buffer[field_names[7]] = ard_results_vol
+                write_big_buffer.append(copy.deepcopy(write_single_buffer))
+                write_single_buffer.update(write_buffer_default)
                 daq_cycle_count += 1
+                time.sleep(reading_delay)
             else:
                 print("DAQ Data acqusition process complete. Now writing the data...")
+                print("DEBUG Data inside the big buffer:", write_big_buffer)
                 SAVEDATA.write_operation(config_vars=CONFIG_VARS, data=write_big_buffer, field_names=field_names, timestamp=file_timestamp)
 
             print(f"DAQ Data acquisition and writing process completed with {daq_cycles} cycles!")

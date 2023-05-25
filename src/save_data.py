@@ -37,7 +37,7 @@ def initialise_results_file(config_vars: dict, field_names: list, timestamp: str
         file_path = dir_location.joinpath(file_name + ".csv")
 
     print("DEBUG file_path", file_path)
-    with open_f(file=file_path, newline="", mode="a+") as (csvfile, err):
+    with open_f(file=file_path, newline="", mode="w") as (csvfile, err):
         if err:
             print("IOError when initialising the results file!", err)
             return False

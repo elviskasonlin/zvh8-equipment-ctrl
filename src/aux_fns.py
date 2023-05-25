@@ -118,9 +118,16 @@ def save_configuration(currentWorkingDir: pathlib.Path, fileName: str, directory
     file_loc = dir_loc.joinpath(fileName + ".json")
     print(f"File saving at {file_loc}")
     # Write the data
-    f = open(file_loc, "a") # 'a': For writing. File is created if it does not exist
+    f = open(file_loc, "w") # 'w': For writing. File is created if it does not exist
     json.dump(configData, f)
     f.close()
 
     return
 
+
+# def empty_dict_buffers(field_names: list, replace_with):
+#     new_buffer = dict
+#     for each in field_names:
+#         print(each)
+#         new_buffer.update(dict(each=replace_with))
+#     return new_buffer
