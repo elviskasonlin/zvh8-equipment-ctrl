@@ -27,7 +27,8 @@ def get_default_configuration():
         "VNA_POINTS": 401,
         "VNA_START_FREQ": 750,
         "VNA_STOP_FREQ": 1150,
-        "VNA_CAL_KIT_ID": "FSH-Z28"
+        "VNA_CAL_KIT_ID": "FSH-Z28",
+        "VNA_STATE_FILE": "CTRL_CAL_STATE.SET"
     }
     return CONFIGURATION_VARS
 

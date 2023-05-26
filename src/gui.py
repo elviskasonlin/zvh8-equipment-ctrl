@@ -3,7 +3,7 @@ menu_texts = {
     "menu_title_text_main_menu": "MAIN MENU",
     "menu_title_text_settings": "[2] SETTINGS",
     "menu_body_text_main_menu": """[1] Initialise Connected Devices\n[2] Settings\n[3] Start Data Acquisition\n[0] Quit\n\nEnter your choice below""",
-    "menu_body_text_settings": """[1] Change Save Folder Name (Default: "results" in ./)\n[2] Change Save File Name (Default: logfile.csv)\n[3] Change Arduino Port (Default: None)\n[4] Change R&S Instrument Port (Default: TCPIP0::172.16.10.10::INSTR)\n[5] Reset configuration file with defaults\n[0] Exit\n\nEnter your choice below"""
+    "menu_body_text_settings": """[1] Change Save Folder Name (Default: "results" in ./)\n[2] Change Save File Name (Default: logfile.csv)\n[3] Change Arduino Port (Default: None)\n[4] Change R&S Instrument Port (Default: TCPIP0::172.16.10.10::INSTR)\n[5] Reset configuration file with defaults\n[6] Calibrate VNA\n[7] Store VNA state\n[8] Load VNA state\n[9] Change VNA start/stop frequency\n[0] Exit\n\nEnter your choice below"""
 }
 def get_menu_text(menuName: str):
     """

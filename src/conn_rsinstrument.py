@@ -51,20 +51,26 @@ def vna_measurement_setup(instrument: RsInstrument.RsInstrument, configVars: dic
     return
 
 
-#     zna.write_str_with_opc('MMEMORY:STORE:CORRection 1, "AUTOCAL.cal"')  # Save current calibration
-#     zna.write_str_with_opc('MMEMORY:LOAD:CORRection 1, "AUTOCAL.cal"')  # And reload it (just to show the command)
-def load_calibration():
-    pass
+def load_calibration(instrument: RsInstrument.RsInstrument, cal_name: str):
+    try:
+        instrument.write_str_with_opc("MMEMory:LOAD:STATe 1,'CTRL_CAL_STATE.SET'")
+    except Exception as err:
+        print(f"ERROR Unable to load state with following error reported: {err}")
+    return
 
-def store_calibration():
-    pass
+def store_calibration(instrument: RsInstrument.RsInstrument, cal_name: str):
+    try:
+        instrument.write_str_with_opc("MMEMory:STORe:STATe 1,'CTRL_CAL_STATE.SET'")
+    except Exception as err:
+        print(f"ERROR Unable to store state with following error reported: {err}")
+    return
 
 def calibrate_instrument(instrument: RsInstrument.RsInstrument, configVars: dict):
 
     # https://github.com/Rohde-Schwarz/Examples/blob/main/VectorNetworkAnalyzers/Python/RsInstrument/RsInstrument_ZNB_CAL_P1_Save_Reload.py
 
     instrument_cal_status = instrument.query_str_with_opc("CAL:MODE?")
-    print(instrument_cal_status)
+    # print(instrument_cal_status)
 
     current_status = str()
     user_input = str()

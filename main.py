@@ -5,7 +5,7 @@ Instrumentation control and data acquisition script
 For use in collecting the data from both the Vector Network Analyser and the Arduino (that is connected to force-sensing resistors)
 Currently implemented for Rohde and Schwarz ZVH8 Cable and Antenna Analyser and Arduino Uno (5V)
 
-Version Beta 1.0
+Version Release 1.0
 
 Created on Tue May 16 17:32:29 2023
 @author: elviskasonlin
@@ -55,18 +55,23 @@ def main():
             # Device Initialisation
 
             # Initialise Arduino Serial
-            print("INITIALISE Establishing connection with Arduino...")
+            print(f"INITIALISE Establishing connection with Arduino at {CONFIG_VARS['ARDUINO_PORT']}...")
             if not ARD_CONN_IS_READY:
                 serialObject, ARD_CONN_IS_READY = ARDCONN.establish_connection(configVariables=CONFIG_VARS)
-            if (ARD_CONN_IS_READY == True):
-                print(f"SUCCESS Connected to {CONFIG_VARS['ARDUINO_PORT']}")
+                if (ARD_CONN_IS_READY == True):
+                   print(f"SUCCESS Connected to {CONFIG_VARS['ARDUINO_PORT']}")
+            else:
+                print("WARNING Arduino already connected")
             #print("DEBUG Arduino Connection Status:", ARD_CONN_IS_READY)
 
             # Initialise R&S VNA
             print("INITIALISE Establishing connection with VNA...")
-            RSINST, RSINST_CONN_IS_READY = INSTCONN.establish_connection(configVars=CONFIG_VARS)
-            if (RSINST_CONN_IS_READY == True):
-                print(f"SUCCESS Connected to {CONFIG_VARS['VNA_RESOURCE']}")
+            if not RSINST_CONN_IS_READY:
+                RSINST, RSINST_CONN_IS_READY = INSTCONN.establish_connection(configVars=CONFIG_VARS)
+                if (RSINST_CONN_IS_READY == True):
+                    print(f"SUCCESS Connected to {CONFIG_VARS['VNA_RESOURCE']}")
+            else:
+                print("WARNING VNA already connected")
             #print("DEBUG RS Inst. Connection Status:", RSINST_CONN_IS_READY)
 
             if (ARD_CONN_IS_READY == False) or (RSINST_CONN_IS_READY == False):
@@ -79,7 +84,7 @@ def main():
                     inst_cal_status = INSTCONN.calibrate_instrument(instrument=RSINST, configVars=CONFIG_VARS)
                 print("SUCCESS All devices initialised")
                 if inst_cal_status != True:
-                    print("WARNING But device was not calibrated")
+                    print("WARNING VNA uncalibrated. You can run through the calibration routine from settings")
             menu_choice = -1
         elif menu_choice == 2:
             # Settings
@@ -189,6 +194,51 @@ def main():
                     AUXFN.save_configuration(currentWorkingDir=CURRENT_WORKING_DIR, fileName=CONFIG_VARS["CONFIG_FILE_NAME"],
                                              directoryName=CONFIG_VARS["CONFIG_FOLDER"], configData=CONFIG_VARS)
                     print(f"DONE Configuration file reset!")
+                case 6:
+                    print("Entering VNA calibration routine")
+                    if RSINST is None:
+                        print("ERROR No valid instruments found")
+                        continue
+                    else:
+                        inst_cal_status = INSTCONN.calibrate_instrument(instrument=RSINST, configVars=CONFIG_VARS)
+                        if inst_cal_status == True:
+                            print("CALIBRATION Calibration successful")
+                        else:
+                            print("CALIBRATION Calibration unsuccessful")
+                case 7:
+                    if RSINST is None:
+                        print("ERROR No valid instruments found")
+                        continue
+                    else:
+                        print(f"Saving VNA state to {CONFIG_VARS['VNA_STATE_FILE']}")
+                        INSTCONN.store_calibration(instrument=RSINST, cal_name=CONFIG_VARS["VNA_STATE_FILE"])
+                case 8:
+                    if RSINST is None:
+                        print("ERROR No valid instruments found")
+                        continue
+                    else:
+                        print(f"Attempting to load VNA state from {CONFIG_VARS['VNA_STATE_FILE']}")
+                        INSTCONN.load_calibration(instrument=RSINST, cal_name=CONFIG_VARS["VNA_STATE_FILE"])
+                case 9:
+                    new_freq_start = AUXFN.get_user_input(display_text="Enter start frequency in MHz: ", return_type="int")
+                    new_freq_stop = AUXFN.get_user_input(display_text="Enter stop frequency in MHz: ", return_type="int")
+                    if (new_freq_start <= 8000 and new_freq_start >= 1) and (new_freq_stop <= 8000 and new_freq_stop >= 1) and (new_freq_stop > new_freq_start):
+                        CONFIG_VARS["VNA_START_FREQ"] = new_freq_start
+                        CONFIG_VARS["VNA_STOP_FREQ"] = new_freq_stop
+                        AUXFN.save_configuration(currentWorkingDir=CURRENT_WORKING_DIR, fileName=CONFIG_VARS["CONFIG_FILE_NAME"], directoryName=CONFIG_VARS["CONFIG_FOLDER"], configData=CONFIG_VARS)
+                        print("NOTICE Configuration saved with new start and stop frequencies")
+                        print("NOTICE Setting measurement again...")
+                        INSTCONN.vna_measurement_setup(instrument=RSINST, configVars=CONFIG_VARS)
+                        print("SUCCESS VNA configured with new measurement settings")
+                    else:
+                        print("ERROR Unable to complete changes in start and stop frequencies. Are the start and stop frequencies valid?")
+                case 10:
+                    try:
+                        print("Reloading configuration from file...")
+                        CONFIG_VARS = AUXFN.load_configuration(currentWorkingDir=CURRENT_WORKING_DIR, fileName=DEFAULT_CONFIG_VARS["CONFIG_FILE_NAME"],directoryName=DEFAULT_CONFIG_VARS["CONFIG_FOLDER"])
+                        print("SUCCESS Configuration reloaded")
+                    except Exception as err:
+                        print(f"ERROR Cannot reload configuration with the following error message: {err}")
                 case _:
                     pass
 
@@ -239,17 +289,17 @@ def main():
                 # Start data acquisition process
                 # R&S VNA
                 vna_data = INSTCONN.acquire_vna_data(instrument=RSINST, configVars=CONFIG_VARS)
-                print("DEBUG vna_data", vna_data)
-                # # Arduino
+                # print("DEBUG vna_data", vna_data)
+                # Arduino
                 ard_results_vol, ard_read_status = ARDCONN.get_FSR_vals(serialObject=serialObject, data_selection="voltage")
-                print("DEBUG ard_results_vol", ard_results_vol, "ard_read_status:", ard_read_status)
+                # print("DEBUG ard_results_vol", ard_results_vol, "ard_read_status:", ard_read_status)
                 ard_results_res, ard_read_status = ARDCONN.get_FSR_vals(serialObject=serialObject, data_selection="resistance")
-                print("DEBUG ard_results_res", ard_results_res, "ard_read_status:", ard_read_status)
+                # print("DEBUG ard_results_res", ard_results_res, "ard_read_status:", ard_read_status)
 
                 current_daq_process_time = datetime.datetime.now()
                 current_daq_process_time_delta = current_daq_process_time - daq_start_time
                 data_timestamp = current_daq_process_time_delta.total_seconds()
-                print("DEBUG data_timestamp", data_timestamp)
+                print(f"NOTICE Reading {daq_cycle_count + 1} taken at timestamp", data_timestamp)
 
                 write_single_buffer[field_names[0]] = data_timestamp
                 write_single_buffer[field_names[1]] = CONFIG_VARS["VNA_POINTS"]
@@ -262,10 +312,18 @@ def main():
                 write_big_buffer.append(copy.deepcopy(write_single_buffer))
                 write_single_buffer.update(write_buffer_default)
                 daq_cycle_count += 1
-                time.sleep(reading_delay)
+
+                if to_automate_daq:
+                    time.sleep(reading_delay)
+                else:
+                    to_continue_process = AUXFN.get_user_input(display_text="Continue next reading? [Y]es [N]o: ", return_type="bool")
+                    if to_continue_process:
+                        continue
+                    else:
+                        break
             else:
                 print("DAQ Data acqusition process complete. Now writing the data...")
-                print("DEBUG Data inside the big buffer:", write_big_buffer)
+                # print("DEBUG Data inside the big buffer:", write_big_buffer)
                 SAVEDATA.write_operation(config_vars=CONFIG_VARS, data=write_big_buffer, field_names=field_names, timestamp=file_timestamp)
 
             print(f"DAQ Data acquisition and writing process completed with {daq_cycles} cycles!")
