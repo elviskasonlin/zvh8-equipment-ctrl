@@ -246,10 +246,10 @@ def main():
         elif menu_choice == 3:
             # Data Acquisition
 
-            # Check for the status flag
-            # if (ARD_CONN_IS_READY == False) or (RSINST_CONN_IS_READY == False):
-            #     print("ERROR Data acquisition cannot commence. One or more devices not initialised. Please initialise your devices before starting data acquisition.")
-            #     continue
+            Check for the status flag
+            if (ARD_CONN_IS_READY == False) or (RSINST_CONN_IS_READY == False):
+                print("ERROR Data acquisition cannot commence. One or more devices not initialised. Please initialise your devices before starting data acquisition.")
+                continue
 
             to_automate_daq = False
             daq_cycles = 5
@@ -257,8 +257,9 @@ def main():
             to_automate_daq = AUXFN.get_user_input(display_text="QUERY Is this an automated run based on set cycles without manual confirmation? [Y]es [N]o: ", return_type="bool")
             daq_cycles = AUXFN.get_user_input(display_text="Enter the number of cycles you would like to run the acquisition process for: ", return_type="int")
             reading_delay = AUXFN.get_user_input(display_text="Enter the delay between readings in seconds: ", return_type="float")
+            fname_suffix = AUXFN.get_user_input(display_text="(Optional) File name suffix if any. Leave blank if none:", return_type="str")
 
-            print(f"DAQ You have chosen the following options: daq automation = {str(to_automate_daq)}, daq cycles = {str(daq_cycles)}, delay time = {str(reading_delay)}")
+            print(f"DAQ You have chosen the following options: daq automation = {str(to_automate_daq)}, daq cycles = {str(daq_cycles)}, delay time = {str(reading_delay)}, file name suffix = {fname_suffix}")
             choice_confirmed = AUXFN.get_user_input(display_text="Confirm choice? [Y]es [N]o: ", return_type="bool")
 
             if not choice_confirmed:
@@ -268,7 +269,8 @@ def main():
             field_names = ["Timestamp / HH:MM:SS.SS", "Sweep points / #", "Freq / Hz", "Mag. / dB", "Impedence / Ohm", "Trace Data", "FSR Resistance / Ohm", "FSR Voltage / V"]
             current_time_for_file_naming = datetime.datetime.now().timetuple()
             file_timestamp = f"{current_time_for_file_naming[0]}{current_time_for_file_naming[1]}{current_time_for_file_naming[2]}{current_time_for_file_naming[3]}{current_time_for_file_naming[4]}{current_time_for_file_naming[5]}"
-            print("DEBUG file_timestamp", file_timestamp)
+            CONFIG_VARS["OUTPUT_FILE_NAME"] = CONFIG_VARS["OUTPUT_FILE_NAME"] + "-" + fname_suffix
+            # print("DEBUG file_timestamp", file_timestamp)
             SAVEDATA.initialise_results_file(config_vars=CONFIG_VARS, field_names=field_names, timestamp=file_timestamp)
 
             write_buffer_default = {
