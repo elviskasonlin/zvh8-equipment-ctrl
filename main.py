@@ -246,7 +246,7 @@ def main():
         elif menu_choice == 3:
             # Data Acquisition
 
-            Check for the status flag
+            # Check for the status flag
             if (ARD_CONN_IS_READY == False) or (RSINST_CONN_IS_READY == False):
                 print("ERROR Data acquisition cannot commence. One or more devices not initialised. Please initialise your devices before starting data acquisition.")
                 continue

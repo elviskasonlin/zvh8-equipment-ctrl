@@ -1,8 +1,11 @@
+import operator
+
 import scipy as sp
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from typing import Iterable, Tuple
+import timeit
 
 pow = [-8.893078804, -8.868774414, -8.938971519, -9.018967628, -9.108658791, -9.207920074, -9.278100014, -9.387408257,
        -9.435790062, -9.503517151, -9.566358566, -9.608409882, -9.690438271, -9.75394249, -9.834890366, -9.937273026,
@@ -58,6 +61,7 @@ pow = [-8.893078804, -8.868774414, -8.938971519, -9.018967628, -9.108658791, -9.
 
 
 def main():
+    start_time = timeit.timeit()
     start_f = 750
     stop_f = 1300
     sweep_range = stop_f - start_f
@@ -94,7 +98,37 @@ def main():
     target_yvalues = [dB_target_3 for x in new_xvalues]
 
     intersect_points = intersect(np.asarray(new_xvalues), np.asarray(new_yvalues), np.asarray(target_yvalues))
-    print(list(intersect_points))
+    intersect_points = list(intersect_points)
+
+    # Get distance of intersect points to the minimum point and save as dictionary
+    intersect_pt_as_list_of_dicts = list()
+    for pt in intersect_points:
+        print(pt)
+        freq = pt[0]
+        mag = pt[1]
+        dist = abs(minimum_pt["x"] - freq)
+        dict_update_buffer = {"freq": freq, "mag": mag, "dist": dist}
+        intersect_pt_as_list_of_dicts.append(dict_update_buffer)
+    #print("intersect_pt_as_list_of_dicts:", intersect_pt_as_list_of_dicts)
+
+    # Sort by distance
+    sorted_list = sorted(intersect_pt_as_list_of_dicts, key=operator.itemgetter("dist"))
+    print("sorted_list:", sorted_list)
+
+    # Use the closest points
+    closest_points = [sorted_list[0], sorted_list[1]]
+    print(closest_points)
+
+    # Get bandwidth
+    bandwidth = abs(closest_points[0]["freq"] - closest_points[1]["freq"])
+
+    # Get Q factor
+    q_factor = minimum_pt["x"] / bandwidth
+
+    print("Bandwidth:", bandwidth, "Q Factor:", q_factor)
+    end_time = timeit.timeit()
+    time_elapsed = end_time - start_time
+    print(float(time_elapsed))
 
     # plt.plot(freq, pow, marker=".", label='Original', color="r", alpha=0.5)
     plt.plot(new_xvalues, fitted_curve(new_xvalues), label='Interpolated', color="m", alpha=0.5)
