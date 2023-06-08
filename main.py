@@ -20,6 +20,7 @@ import src.conn_arduino as ARDCONN
 import src.conn_rsinstrument as INSTCONN
 import src.gui as GUI
 import src.save_data as SAVEDATA
+import src.calculate as TRACECALC
 
 import copy
 import pathlib
@@ -266,7 +267,7 @@ def main():
                 continue
 
             # Initialise results save file
-            field_names = ["Timestamp / HH:MM:SS.SS", "Sweep points / #", "Freq / Hz", "Mag. / dB", "Impedence / Ohm", "Trace Data", "FSR Resistance / Ohm", "FSR Voltage / V"]
+            field_names = ["Timestamp / HH:MM:SS.SS", "Sweep points / #", "Freq / Hz", "Mag. / dB", "Impedence / Ohm", "Trace Data", "FSR Resistance / Ohm", "FSR Voltage / V", "Cutoff Mag / dB", "Bandwidth / MHz", "Q Factor at Cutoff Mag"]
             current_time_for_file_naming = datetime.datetime.now().timetuple()
             file_timestamp = f"{current_time_for_file_naming[0]}{current_time_for_file_naming[1]}{current_time_for_file_naming[2]}{current_time_for_file_naming[3]}{current_time_for_file_naming[4]}{current_time_for_file_naming[5]}"
             CONFIG_VARS["OUTPUT_FILE_NAME"] = CONFIG_VARS["OUTPUT_FILE_NAME"] + "-" + fname_suffix
@@ -281,7 +282,10 @@ def main():
                 field_names[4]: None,
                 field_names[5]: None,
                 field_names[6]: None,
-                field_names[7]: None
+                field_names[7]: None,
+                field_names[8]: None,
+                field_names[9]: None,
+                field_names[10]: None
             }
             write_single_buffer = dict(write_buffer_default)
             write_big_buffer = []
@@ -303,6 +307,15 @@ def main():
                 data_timestamp = current_daq_process_time_delta.total_seconds()
                 print(f"NOTICE Reading {daq_cycle_count + 1} taken at timestamp", data_timestamp)
 
+                # Process trace data
+                #"Cutoff Mag / dB", "Bandwidth / MHz", "Q Factor at Cutoff Mag"
+                target_cutoff_mags = [-10, -6, -3]
+                processed_trace_results = TRACECALC.get_trace_analysis(target_cutoff_mags=target_cutoff_mags,
+                                                                       sweep_start_f=CONFIG_VARS["VNA_START_FREQ"],
+                                                                       sweep_stop_f=CONFIG_VARS["VNA_STOP_FREQ"],
+                                                                       trace_data=vna_data["trace_data"])
+
+                # Save to buffer
                 write_single_buffer[field_names[0]] = data_timestamp
                 write_single_buffer[field_names[1]] = CONFIG_VARS["VNA_POINTS"]
                 write_single_buffer[field_names[2]] = vna_data["min_pt_freq"]
@@ -311,6 +324,9 @@ def main():
                 write_single_buffer[field_names[5]] = vna_data["trace_data"]
                 write_single_buffer[field_names[6]] = ard_results_res
                 write_single_buffer[field_names[7]] = ard_results_vol
+                write_single_buffer[field_names[8]] = processed_trace_results["cutoff_mag"]
+                write_single_buffer[field_names[9]] = processed_trace_results["bandwidth"]
+                write_single_buffer[field_names[10]] = processed_trace_results["q_factor"]
                 write_big_buffer.append(copy.deepcopy(write_single_buffer))
                 write_single_buffer.update(write_buffer_default)
                 daq_cycle_count += 1

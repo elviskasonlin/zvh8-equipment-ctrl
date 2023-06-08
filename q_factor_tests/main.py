@@ -92,44 +92,77 @@ def main():
     # trough_values = [fitted_curve(idx*delta+start_f) for idx in trough_values_idx]
     # trough_value_freq = [idx*delta+start_f for idx in peak_values_idx]
 
-    dB_target_1 = -3
+    dB_target_1 = -10
     dB_target_2 = -6
-    dB_target_3 = -10
-    target_yvalues = [dB_target_3 for x in new_xvalues]
+    dB_target_3 = -3
+    target_cutoff_mags = [dB_target_3, dB_target_2, dB_target_1]
 
-    intersect_points = intersect(np.asarray(new_xvalues), np.asarray(new_yvalues), np.asarray(target_yvalues))
-    intersect_points = list(intersect_points)
+    # Run through the target magnitudes, placing priority on the more negative numbers
+    sorted_target_magnitudes = sorted(target_cutoff_mags, reverse=True)
+    is_cutoff_successful = False
+    cnt_max = len(sorted_target_magnitudes)
+    cnt_cur = 0
 
-    # Get distance of intersect points to the minimum point and save as dictionary
-    intersect_pt_as_list_of_dicts = list()
-    for pt in intersect_points:
-        print(pt)
-        freq = pt[0]
-        mag = pt[1]
-        dist = abs(minimum_pt["x"] - freq)
-        dict_update_buffer = {"freq": freq, "mag": mag, "dist": dist}
-        intersect_pt_as_list_of_dicts.append(dict_update_buffer)
-    #print("intersect_pt_as_list_of_dicts:", intersect_pt_as_list_of_dicts)
+    while is_cutoff_successful is False:
+        print("------------------------")
+        if cnt_cur >= cnt_max:
+            print("Exceeded count max. Breaking...")
+            break
 
-    # Sort by distance
-    sorted_list = sorted(intersect_pt_as_list_of_dicts, key=operator.itemgetter("dist"))
-    print("sorted_list:", sorted_list)
+        target_yvalues = [target_cutoff_mags[cnt_cur] for x in new_xvalues]
+        intersect_points = intersect(np.asarray(new_xvalues), np.asarray(new_yvalues), np.asarray(target_yvalues))
+        intersect_points = list(intersect_points)
+        print(f"For current run num. {cnt_cur}, intersect points number at {len(intersect_points)}")
 
-    # Use the closest points
-    closest_points = [sorted_list[0], sorted_list[1]]
-    print(closest_points)
+        if len(intersect_points) < 2:
+            print("Inadequate intersect points, jumping to next...")
+            cnt_cur = cnt_cur + 1
+            continue
+        else:
+            print(f"Getting the intersect and more for target cutoff of {target_cutoff_mags[cnt_cur]} ")
+            # Get distance of intersect points to the minimum point and save as dictionary
+            intersect_pt_as_list_of_dicts = list()
 
-    # Get bandwidth
-    bandwidth = abs(closest_points[0]["freq"] - closest_points[1]["freq"])
+            for pt in intersect_points:
+                print(pt)
+                freq = pt[0]
+                mag = pt[1]
+                dist = abs(minimum_pt["x"] - freq)
+                dict_update_buffer = {"freq": freq, "mag": mag, "dist": dist}
+                intersect_pt_as_list_of_dicts.append(dict_update_buffer)
+            #print("intersect_pt_as_list_of_dicts:", intersect_pt_as_list_of_dicts)
 
-    # Get Q factor
-    q_factor = minimum_pt["x"] / bandwidth
+            # Sort by distance
+            sorted_list = sorted(intersect_pt_as_list_of_dicts, key=operator.itemgetter("dist"))
+            print("sorted_list:", sorted_list)
 
-    print("Bandwidth:", bandwidth, "Q Factor:", q_factor)
-    end_time = timeit.timeit()
-    time_elapsed = end_time - start_time
-    print(float(time_elapsed))
+            # Use the closest points
+            closest_points = [sorted_list[0], sorted_list[1]]
+            print(closest_points)
 
+            # Check whether the two points are left and right of the minimum point
+            sorted_list_by_f = sorted(closest_points, key=operator.itemgetter("freq"))
+            print("Sorted list by f:", sorted_list_by_f)
+
+            if not ((sorted_list_by_f[0]["freq"] < minimum_pt["x"]) and (minimum_pt["x"] < sorted_list_by_f[1]["freq"])):
+                print("Does not match criteria of two points being left and right")
+                cnt_cur = cnt_cur + 1
+                continue
+
+            # Get bandwidth
+            bandwidth = abs(closest_points[0]["freq"] - closest_points[1]["freq"])
+
+            # Get Q factor
+            q_factor = minimum_pt["x"] / bandwidth
+
+            print("Bandwidth:", bandwidth, "Q Factor:", q_factor)
+            end_time = timeit.timeit()
+            time_elapsed = end_time - start_time
+            print("Time elapsed for this iteration:", float(time_elapsed))
+
+            is_cutoff_successful = True
+
+    print("Target found:", is_cutoff_successful)
     # plt.plot(freq, pow, marker=".", label='Original', color="r", alpha=0.5)
     plt.plot(new_xvalues, fitted_curve(new_xvalues), label='Interpolated', color="m", alpha=0.5)
     # plt.plot(peak_values, fitted_curve(peak_values), marker="+")
