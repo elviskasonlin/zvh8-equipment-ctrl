@@ -6,11 +6,11 @@ Created on Wed May 29 2023
 @author: elviskasonlin
 """
 import operator
-
 import scipy
 import numpy
+from typing import Iterable, Tuple
 
-def intersect(x: np.array, f: np.array, g: np.array) -> Iterable[Tuple[(int, int)]]:
+def intersect(x: numpy.array, f: numpy.array, g: numpy.array) -> Iterable[Tuple[(int, int)]]:
     """
     Finds the intersection points between `f` and `g` on the domain `x`.
     Args:
@@ -22,7 +22,7 @@ def intersect(x: np.array, f: np.array, g: np.array) -> Iterable[Tuple[(int, int
     Returns:
         An iterable containing the (x,y) points of intersection.
     """
-    idx = np.argwhere(np.diff(np.sign(f - g))).flatten()
+    idx = numpy.argwhere(numpy.diff(numpy.sign(f - g))).flatten()
     return zip(x[idx], f[idx])
 
 
@@ -43,7 +43,7 @@ def get_trace_analysis(target_cutoff_mags: list, sweep_start_f: float, sweep_sto
 
     trace_point_count = len(trace_data)
     trace_point_delta = sweep_range / (trace_point_count - 1)
-    corresponding_trace_freq = [idx*trace_point_delta+sweep_start_f for idx in range(0, pts)]
+    corresponding_trace_freq = [idx*trace_point_delta+sweep_start_f for idx in range(0, trace_point_count)]
     interpolated_trace = scipy.interpolate.interp1d(corresponding_trace_freq, trace_data)
 
     # Generate a detailed trace using the interpolated trace function
@@ -109,4 +109,4 @@ def get_trace_analysis(target_cutoff_mags: list, sweep_start_f: float, sweep_sto
             final_cutoff_mag = sorted_target_magnitudes[cnt_cur]
             is_cutoff_successful = True
 
-    return {"is_successful": is_cutoff_successful, "bandwidth:": bandwidth, "q_factor": q_factor, "cutoff_mag": final_cutoff_mag}
+    return {"is_successful": is_cutoff_successful, "bandwidth": bandwidth, "q_factor": q_factor, "cutoff_mag": final_cutoff_mag}

@@ -10,6 +10,7 @@ matplotlib = "*"
 pyvisa = "*"
 numpy = "*"
 scipy = "*"
+waiting = "*"
 
 [dev-packages]
 

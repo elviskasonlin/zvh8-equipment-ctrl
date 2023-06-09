@@ -191,6 +191,7 @@ def establish_connection(configVariables: dict):
                 timeout=configVariables["ARDUINO_CONN_TIMEOUT"],
                 rtscts=True)
     except serial.SerialException as err:
+        print(f"DEBUG {err}")
         print("ERROR! Unable to connect to the Arduino. Are you sure the Arduino is connected and its connection port is specified correctly?")
         ard_conn_is_ready = False
         return serial_object, ard_conn_is_ready
