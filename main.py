@@ -19,8 +19,9 @@ import src.aux_fns as AUXFN
 import src.conn_arduino as ARDCONN
 import src.conn_rsinstrument as INSTCONN
 import src.gui as GUI
-import src.save_data as SAVEDATA
+import src.rw_data as RWDATA
 import src.calculate as TRACECALC
+import src.plotter as PLOTTER
 
 import copy
 import pathlib
@@ -252,6 +253,8 @@ def main():
                 print("ERROR Data acquisition cannot commence. One or more devices not initialised. Please initialise your devices before starting data acquisition.")
                 continue
 
+            original_output_file_name = copy.deepcopy(CONFIG_VARS["OUTPUT_FILE_NAME"])
+
             to_automate_daq = False
             daq_cycles = 5
             daq_cycle_count = 0
@@ -267,12 +270,12 @@ def main():
                 continue
 
             # Initialise results save file
-            field_names = ["Timestamp / HH:MM:SS.SS", "Sweep points / #", "Freq / Hz", "Mag. / dB", "Impedence / Ohm", "Trace Data", "FSR Resistance / Ohm", "FSR Voltage / V", "Cutoff Mag / dB", "Bandwidth / MHz", "Q Factor at Cutoff Mag"]
+            field_names = CONFIG_VARS["FIELD_NAMES"]
             current_time_for_file_naming = datetime.datetime.now().timetuple()
             file_timestamp = f"{current_time_for_file_naming[0]}{current_time_for_file_naming[1]}{current_time_for_file_naming[2]}{current_time_for_file_naming[3]}{current_time_for_file_naming[4]}{current_time_for_file_naming[5]}"
             CONFIG_VARS["OUTPUT_FILE_NAME"] = CONFIG_VARS["OUTPUT_FILE_NAME"] + "-" + fname_suffix
             # print("DEBUG file_timestamp", file_timestamp)
-            SAVEDATA.initialise_results_file(config_vars=CONFIG_VARS, field_names=field_names, timestamp=file_timestamp)
+            RWDATA.initialise_results_file(config_vars=CONFIG_VARS, field_names=field_names, timestamp=file_timestamp)
 
             write_buffer_default = {
                 field_names[0]: None,
@@ -306,6 +309,7 @@ def main():
                 current_daq_process_time_delta = current_daq_process_time - daq_start_time
                 data_timestamp = current_daq_process_time_delta.total_seconds()
                 print(f"NOTICE Reading {daq_cycle_count + 1} taken at timestamp", data_timestamp)
+                print(f"Arduino with status {ard_read_status} has data read: voltage = {ard_results_vol} and resistance = {ard_results_res}")
 
                 # Process trace data
                 #"Cutoff Mag / dB", "Bandwidth / MHz", "Q Factor at Cutoff Mag"
@@ -342,11 +346,16 @@ def main():
             else:
                 print("DAQ Data acqusition process complete. Now writing the data...")
                 # print("DEBUG Data inside the big buffer:", write_big_buffer)
-                SAVEDATA.write_operation(config_vars=CONFIG_VARS, data=write_big_buffer, field_names=field_names, timestamp=file_timestamp)
+                RWDATA.write_operation(config_vars=CONFIG_VARS, data=write_big_buffer, field_names=field_names, timestamp=file_timestamp)
 
             print(f"DAQ Data acquisition and writing process completed with {daq_cycles} cycles!")
 
+            # Reset the output file name
+            CONFIG_VARS["OUTPUT_FILE_NAME"] = original_output_file_name
             menu_choice = -1
+        elif menu_choice == 4:
+            # Enter plotting function
+            PLOTTER.engage_plotter(config_vars=CONFIG_VARS)
         else:
             print("NOTICE: Exiting program...")
             exit()
