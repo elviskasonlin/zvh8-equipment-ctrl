@@ -9,6 +9,7 @@ Created on Wed Jun 14 2023
 import matplotlib
 import src.rw_data as RWDATA
 import src.aux_fns as AUXFN
+import pandas as pd
 
 def engage_plotter(config_vars: dict):
     files = RWDATA.list_files(folder_name=config_vars["OUTPUT_FOLDER"], file_format="csv")
@@ -29,10 +30,16 @@ def engage_plotter(config_vars: dict):
     choice_file_path = files[choice-1]
     print(f"You have chosen the following file path: {choice_file_path}")
     read_status, file_data = RWDATA.read_operation(file_path=choice_file_path, field_names=config_vars["FIELD_NAMES"])
-    print(read_status, file_data)
+    print("DEBUG", "plotter read_status:", read_status, ", plotter file_data:", file_data)
     field_name = config_vars["FIELD_NAMES"][5]
     trace_data = [row[field_name] for row in file_data]
-    print(trace_data)
+    trace_data.pop(0)
+    print("DEBUG", f"trace_data len: {len(trace_data)}, trace_data type: {type(trace_data)}, trace_data data: {trace_data}")
+
+    # Debugging and visualisation
+    df = pd.DataFrame(file_data)
+    print(df)
+
     #plot_graph()
 
 def plot_graph():

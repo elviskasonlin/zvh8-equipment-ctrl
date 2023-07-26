@@ -68,16 +68,17 @@ def write_operation(config_vars: dict, data: list, field_names: list, timestamp:
 
 def read_operation(file_path: pathlib.PosixPath, field_names: list):
     return_data, status = list(), bool()
-    with open_f(file=file_path, newline="", mode="a+") as (csvfile, err):
+    with open_f(file=file_path, newline="", mode="r") as (csvfile, err):
         if err:
             print("IOError when reading the file!", err)
             status = False
         else:
             # Continue solving the no data issue
+            print(f"DEBUG csvfile: {csvfile}, field_names: {field_names}")
             reader = csv.DictReader(csvfile, field_names)
-            print(reader)
+            print("DEBUG", reader)
             for row in reader:
-                print(row, type(row))
+                print("DEBUG", type(row), row)
                 return_data.append(row)
             status = True
         return status, return_data
