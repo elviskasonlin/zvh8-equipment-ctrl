@@ -29,7 +29,7 @@ def get_default_configuration():
         "VNA_STOP_FREQ": 1250,
         "VNA_CAL_KIT_ID": "FSH-Z28",
         "VNA_STATE_FILE": "CTRL_CAL_STATE.SET",
-        "FIELD_NAMES": ["Timestamp / HH:MM:SS.SS", "Sweep points / #", "Freq / Hz", "Mag. / dB", "Impedence / Ohm", "Trace Data", "FSR Resistance / Ohm", "FSR Voltage / V", "Cutoff Mag / dB", "Bandwidth / MHz", "Q Factor at Cutoff Mag"]
+        "FIELD_NAMES": ["Timestamp / HH:MM:SS.SS", "Sweep points / #", "Freq / Hz", "Mag. / dB", "Impedence / Ohm", "Trace Data", "FSR Resistance / Ohm", "FSR Voltage / V", "Cutoff Mag / dB", "Bandwidth / MHz", "Q Factor at Cutoff Mag", "Start freq / MHz", "Stop freq / MHz"]
     }
     return CONFIGURATION_VARS
 

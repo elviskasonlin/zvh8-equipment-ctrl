@@ -288,7 +288,9 @@ def main():
                 field_names[7]: None,
                 field_names[8]: None,
                 field_names[9]: None,
-                field_names[10]: None
+                field_names[10]: None,
+                field_names[11]: None,
+                field_names[12]: None
             }
             write_single_buffer = dict(write_buffer_default)
             write_big_buffer = []
@@ -331,6 +333,8 @@ def main():
                 write_single_buffer[field_names[8]] = processed_trace_results["cutoff_mag"]
                 write_single_buffer[field_names[9]] = processed_trace_results["bandwidth"]
                 write_single_buffer[field_names[10]] = processed_trace_results["q_factor"]
+                write_single_buffer[field_names[11]] = CONFIG_VARS["VNA_START_FREQ"]
+                write_single_buffer[field_names[12]] = CONFIG_VARS["VNA_STOP_FREQ"]
                 write_big_buffer.append(copy.deepcopy(write_single_buffer))
                 write_single_buffer.update(write_buffer_default)
                 daq_cycle_count += 1
