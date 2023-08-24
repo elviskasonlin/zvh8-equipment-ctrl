@@ -68,6 +68,7 @@ def main():
 
             # Initialise R&S VNA
             print("INITIALISE Establishing connection with VNA...")
+            print(f"Using port {CONFIG_VARS['VNA_RESOURCE']}")
             if not RSINST_CONN_IS_READY:
                 RSINST, RSINST_CONN_IS_READY = INSTCONN.establish_connection(configVars=CONFIG_VARS)
                 if (RSINST_CONN_IS_READY == True):
@@ -160,8 +161,7 @@ def main():
                     port_choice = str()
                     while (port_choice not in available_serial_dvcs_in_strlist) and (port_choice != "C"):
                         port_choice = AUXFN.get_user_input(display_text="Enter a valid port path ([C] to cancel): ", return_type="str")
-                    else:
-                        # Run once the loop is exited
+
                         if port_choice == "C":
                             # Do nothing if user chooses to cancel
                             pass
@@ -180,8 +180,7 @@ def main():
                     port_choice = str()
                     while (port_choice not in available_instruments) and (port_choice != "C"):
                         port_choice = AUXFN.get_user_input(display_text="Enter a valid instrument resources ([C] to cancel): ", return_type="str")
-                    else:
-                        # Run once the loop is exited
+
                         if port_choice == "C":
                             # Do nothing if user chooses to cancel
                             pass

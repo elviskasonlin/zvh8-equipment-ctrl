@@ -13,7 +13,8 @@ def establish_connection(configVars: dict):
     RSINST_CONN_IS_READY = False
 
     try:
-        instrument = RsInstrument.RsInstrument(resource_name=configVars["VNA_RESOURCE"], id_query=True, reset=True, options="SelectVisa='rs', LoggingMode = Off, LoggingToConsole = False")
+        instrument = RsInstrument.RsInstrument(resource_name=configVars["VNA_RESOURCE"], id_query=True, reset=True,
+                                               options="SelectVisa='rs', LoggingMode=Off, LoggingToConsole=False")
 
         instrument.visa_timeout = 5000
         instrument.opc_timeout = 5000
@@ -25,7 +26,7 @@ def establish_connection(configVars: dict):
         print("ERROR! Instrument VNA not found/unable to connect")
         RSINST_CONN_IS_READY = False
         return instrument, RSINST_CONN_IS_READY
-    except  RsInstrument.TimeoutException:
+    except RsInstrument.TimeoutException:
         print("ERROR! Timed out when connection to the VNA")
         RSINST_CONN_IS_READY = False
         return instrument, RSINST_CONN_IS_READY
