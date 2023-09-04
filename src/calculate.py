@@ -55,7 +55,10 @@ def get_trace_analysis(target_cutoff_mags: list, sweep_start_f: float, sweep_sto
     detailed_trace_mag = [interpolated_trace(x) for x in detailed_trace_freq]
 
     # Find the minimum S11 point in the trace
-    min_point = scipy.optimize.minimize_scalar(interpolated_trace, method="bounded", bounds=(sweep_start_f, sweep_stop_f))
+    # min_point = scipy.optimize.minimize_scalar(interpolated_trace, method="bounded", bounds=(sweep_start_f, sweep_stop_f))
+    # The above keeps finding the first local minimum so that won't work
+    min_point_idx = numpy.argmin(detailed_trace_mag)
+    min_point = {"x": detailed_trace_freq[min_point_idx], "fun": detailed_trace_mag[min_point_idx]}
 
     # Run through the target magnitudes, placing priority on the more negative numbers
     sorted_target_magnitudes = sorted(target_cutoff_mags, reverse=True)

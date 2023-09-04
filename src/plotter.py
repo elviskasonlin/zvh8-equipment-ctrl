@@ -9,6 +9,7 @@ Created on Wed Jun 14 2023
 import src.rw_data as RWDATA
 import src.aux_fns as AUXFN
 import src.calculate as CALC
+import pathlib
 import operator
 import numpy
 import scipy
@@ -61,11 +62,24 @@ def engage_plotter(config_vars: dict):
 
     # print("DEBUG", f"minpt_list data: {minpt_list}")
 
+    # Plot and Save Graphs
+    # Save location
+    parent_folder_name = config_vars["OUTPUT_FOLDER"]
+
     for idx, val in enumerate(extracted_data):
-        plot_graph(data=val)
+        plot = plot_graph(data=val, index=idx)
+        #plot.show()
+        format = "png"
+        dir_location = pathlib.Path.cwd().joinpath(f"{parent_folder_name}/images/{choice}")
+        RWDATA.make_dir(folder_path=dir_location)
+        file_path = dir_location.joinpath(f"{choice}-row_{idx}.{format}")
+        plot.savefig(fname=file_path, dpi='figure', format=format, metadata=None,
+                    bbox_inches=None, pad_inches=0.1,
+                    facecolor='auto', edgecolor='auto',
+                    backend=None)
 
 
-def plot_graph(data: dict):
+def plot_graph(data: dict, index: int):
 
     sweep_start_f = data["startf"]
     sweep_stop_f = data["stopf"]
@@ -96,7 +110,7 @@ def plot_graph(data: dict):
     # Check for intersection points
     intersection_points = list(CALC.intersect(x=numpy.asarray(detailed_trace_freq), f=numpy.asarray(detailed_trace_mag),
                                               g=numpy.asarray(cutoff_mag_trace)))
-
+    print("DEBUG intersection_points:", intersection_points)
     # Get the nearest intersection points
 
     # Get the distance of intersect points to the minimum point and save as a dictionary
@@ -104,7 +118,7 @@ def plot_graph(data: dict):
     for pt in intersection_points:
         freq = pt[0]
         mag = pt[1]
-        dist = abs(interpolated_trace(data["mfreq"]) - freq)
+        dist = abs(data["mfreq"] - freq)
         entry_buffer = {"freq": freq, "mag": mag, "dist": dist}
         intersect_points_list_of_dicts.append(entry_buffer)
 
@@ -117,21 +131,33 @@ def plot_graph(data: dict):
     # Check whether the two points are left and right of the minimum point
     sorted_closest_intersect_points_by_f = sorted(closest_intersect_points, key=operator.itemgetter("freq"))
     is_error_intersect_pts_finder = False
-    if not ((sorted_closest_intersect_points_by_f[0]["freq"] < data["mfreq"]) and (
-            data["mfreq"] < sorted_closest_intersect_points_by_f[1]["freq"])):
+
+    # DEBUGs
+    #print(type(data["mfreq"]))
+    #print(data["mfreq"])
+    #print(sorted_closest_intersect_points_by_f[0]["freq"], sorted_closest_intersect_points_by_f[0]["freq"] <= data["mfreq"])
+    #print(sorted_closest_intersect_points_by_f[1]["freq"], data["mfreq"] <= sorted_closest_intersect_points_by_f[1]["freq"])
+
+    if not ((sorted_closest_intersect_points_by_f[0]["freq"] <= data["mfreq"]) and (
+            data["mfreq"] <= sorted_closest_intersect_points_by_f[1]["freq"])  ):
         print("ERROR Issue with logic for checking whether intersect points left/right of minimum point in plotter.py")
         is_error_intersect_pts_finder = True
 
-    print("DEBUG Intersection Points:", sorted_closest_intersect_points_by_f)
-    print("DEBUG Point count:", len(detailed_trace_mag), len(detailed_trace_freq))
+    #print("DEBUG Intersection Points:", sorted_closest_intersect_points_by_f)
+    #print("DEBUG Point count:", len(detailed_trace_mag), len(detailed_trace_freq))
 
     # Continue with the actual plotting function here
+    plt.xlabel("Frequency in MHz")
+    plt.ylabel("Magnitude in dB")
+    plt.grid()
+    plt.text(x=data["mfreq"]+5,y=interpolated_trace(data["mfreq"])+0.5, s=f"{data['mfreq']} MHz\n{interpolated_trace(data['mfreq'])} dB\n{data['mimp']}", horizontalalignment="left")
     plt.plot(detailed_trace_freq, detailed_trace_mag, label='Interpolated', color="m", alpha=0.5)
     plt.plot(detailed_trace_freq, cutoff_mag_trace, label='Cut-off', color="g", alpha=0.5)
-    plt.plot(data["mfreq"], interpolated_trace(data["mfreq"]), marker="x")
+    plt.plot(data["mfreq"], interpolated_trace(data["mfreq"]), marker="+")
     print("Error?", is_error_intersect_pts_finder)
     if not is_error_intersect_pts_finder:
         plt.plot(sorted_closest_intersect_points_by_f[0]["freq"], sorted_closest_intersect_points_by_f[0]["mag"], marker="x", color="r")
         plt.plot(sorted_closest_intersect_points_by_f[1]["freq"], sorted_closest_intersect_points_by_f[1]["mag"], marker="x", color="r")
     plt.legend()
-    plt.show()
+    # plt.show()
+    return plt

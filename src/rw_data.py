@@ -74,11 +74,11 @@ def read_operation(file_path: pathlib.PosixPath, field_names: list):
             status = False
         else:
             # Continue solving the no data issue
-            print(f"DEBUG csvfile: {csvfile}, field_names: {field_names}")
+            #print(f"DEBUG csvfile: {csvfile}, field_names: {field_names}")
             reader = csv.DictReader(csvfile, field_names)
-            print("DEBUG", reader)
+            #print("DEBUG", reader)
             for row in reader:
-                print("DEBUG", type(row), row)
+                #print("DEBUG", type(row), row)
                 return_data.append(row)
             status = True
         return status, return_data
@@ -89,3 +89,11 @@ def list_files(folder_name: str, file_format: str):
     file_path_list = dir_location.glob(f"*.{file_format}")
     files = [x for x in file_path_list if x.is_file()]
     return files
+
+
+def make_dir(folder_path: pathlib.Path):
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+    else:
+        return None
+    return
