@@ -44,6 +44,8 @@ def engage_plotter(config_vars: dict):
     field_name_min_imp = config_vars["FIELD_NAMES"][4]
     field_name_trace_data = config_vars["FIELD_NAMES"][5]
     field_name_cutoff_mag = config_vars["FIELD_NAMES"][8]
+    field_name_cutoff_bw = config_vars["FIELD_NAMES"][9]
+    field_name_cutoff_qfactor = config_vars["FIELD_NAMES"][10]
     field_name_startf = config_vars["FIELD_NAMES"][11]
     field_name_stopf = config_vars["FIELD_NAMES"][12]
 
@@ -54,6 +56,8 @@ def engage_plotter(config_vars: dict):
                                  "stopf": literal_eval(row[field_name_stopf]),
                                  "pts": literal_eval(row[field_name_points]),
                                  "cutoff": literal_eval(row[field_name_cutoff_mag]),
+                                 "bw": literal_eval(row[field_name_cutoff_bw]),
+                                 "qfactor": literal_eval(row[field_name_cutoff_qfactor]),
                                  "mfreq": literal_eval(row[field_name_min_freq]),
                                  "mmag": literal_eval(row[field_name_min_mag]),
                                  "mimp": row[field_name_min_imp],
@@ -77,6 +81,7 @@ def engage_plotter(config_vars: dict):
                     bbox_inches=None, pad_inches=0.1,
                     facecolor='auto', edgecolor='auto',
                     backend=None)
+        plot.clf()
 
 
 def plot_graph(data: dict, index: int):
@@ -150,7 +155,9 @@ def plot_graph(data: dict, index: int):
     plt.xlabel("Frequency in MHz")
     plt.ylabel("Magnitude in dB")
     plt.grid()
-    plt.text(x=data["mfreq"]+5,y=interpolated_trace(data["mfreq"])+0.5, s=f"{data['mfreq']} MHz\n{interpolated_trace(data['mfreq'])} dB\n{data['mimp']}", horizontalalignment="left")
+    plt.text(x=data["mfreq"]+5,y=interpolated_trace(data["mfreq"])+0.5,
+             s=f"{data['mfreq']} MHz\n{interpolated_trace(data['mfreq'])} dB\n{data['mimp']}\n BW: {round(data['bw'], 3)}, Q: {round(data['qfactor'], 3)}",
+             horizontalalignment="left")
     plt.plot(detailed_trace_freq, detailed_trace_mag, label='Interpolated', color="m", alpha=0.5)
     plt.plot(detailed_trace_freq, cutoff_mag_trace, label='Cut-off', color="g", alpha=0.5)
     plt.plot(data["mfreq"], interpolated_trace(data["mfreq"]), marker="+")
